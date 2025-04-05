@@ -1,0 +1,24 @@
+{
+  "sessions": {
+    "value": 260,
+    "change": 25900,
+    "lastUpdated": "2025-04-05T14:08:44.494Z"
+  },
+  "sales": 0,
+  "lastUpdated": "2025-04-05T14:04:41.711Z",
+  "total_sales": {
+    "value": 40000,
+    "change": 199900,
+    "lastUpdated": "2025-04-05T14:08:44.497Z"
+  },
+  "orders": {
+    "value": 43,
+    "change": 4200,
+    "lastUpdated": "2025-04-05T14:08:44.501Z"
+  },
+  "conversion_rate": {
+    "value": 20,
+    "change": -80,
+    "lastUpdated": "2025-04-05T14:08:44.505Z"
+  }
+}

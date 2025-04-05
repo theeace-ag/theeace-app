@@ -1,8 +1,3 @@
-// Define API URL based on environment
-const API_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
-    ? ''  // Use relative URLs for local development
-    : '';  // Use relative URLs for production too
-
 // General CSS styles for the user content page
 const generalCSS = `
     .container {
@@ -37,57 +32,47 @@ const generalCSS = `
 let currentUserId = null;
 let currentConfig = null;
 
-// Load users from API
-function loadUsers() {
-    console.log('Loading users...');
-    
-    fetch(`${API_URL}/api/users`)
-        .then(response => {
-            if (!response.ok) {
-                throw new Error(`HTTP error! Status: ${response.status}`);
-            }
-            return response.json();
-        })
-        .then(users => {
-            console.log(`Loaded ${users.length} users`);
-            populateUserDropdown(users);
-        })
-        .catch(error => {
-            console.error('Error loading users:', error);
-            const userSelect = document.getElementById('userSelect');
-            userSelect.innerHTML = '<option value="">Error loading users</option>';
+// Load users into select dropdown
+async function loadUsers() {
+    try {
+        console.log('Fetching users...');
+        const response = await fetch('/api/users');
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const users = await response.json();
+        console.log('Loaded users:', users);
+        
+        const userSelect = document.getElementById('userSelect');
+        userSelect.innerHTML = '<option value="">Select a user...</option>';
+        
+        if (users.length === 0) {
+            console.log('No users found');
+            userSelect.innerHTML += '<option disabled>No users available</option>';
+            return;
+        }
+        
+        users.forEach(user => {
+            const option = document.createElement('option');
+            option.value = user.userId;
+            option.textContent = `${user.username} (${user.userId})`;
+            userSelect.appendChild(option);
+            console.log('Added user option:', user.username);
         });
-}
-
-// Populate the user dropdown
-function populateUserDropdown(users) {
-    const userSelect = document.getElementById('userSelect');
-    
-    // Clear existing options
-    userSelect.innerHTML = '';
-    
-    if (users.length === 0) {
-        userSelect.innerHTML = '<option value="">No users available</option>';
-        return;
+    } catch (error) {
+        console.error('Error loading users:', error);
+        const userSelect = document.getElementById('userSelect');
+        userSelect.innerHTML = '<option value="">Error loading users</option>';
+        alert('Error loading users. Please try refreshing the page.');
     }
-    
-    // Add default option
-    userSelect.innerHTML = '<option value="">Select a user...</option>';
-    
-    // Add an option for each user
-    users.forEach(user => {
-        const option = document.createElement('option');
-        const userId = user.id || user.userId; // Support both formats
-        option.value = userId;
-        option.textContent = user.username;
-        userSelect.appendChild(option);
-    });
 }
 
 // Load user's metrics
 async function loadUserMetrics(userId) {
     try {
-        const response = await fetch(`${API_URL}/api/dashboard/metrics/${userId}`);
+        const response = await fetch(`/api/dashboard/metrics/${userId}`);
         if (!response.ok) {
             throw new Error('Failed to fetch metrics');
         }
@@ -142,7 +127,7 @@ function formatMetricChange(change) {
 // Load historical data
 async function loadHistoricalData(userId) {
     try {
-        const response = await fetch(`${API_URL}/api/dashboard/historical/${userId}`);
+        const response = await fetch(`/api/dashboard/historical/${userId}`);
         if (!response.ok) {
             throw new Error('Failed to fetch historical data');
         }
@@ -205,7 +190,7 @@ async function saveHistoricalRow(button) {
     };
 
     try {
-        const response = await fetch(`${API_URL}/api/dashboard/historical/${userId}`, {
+        const response = await fetch(`/api/dashboard/historical/${userId}`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -231,7 +216,7 @@ async function saveHistoricalRow(button) {
 // Update metrics based on historical data
 async function updateMetricsFromHistorical(userId) {
     try {
-        const response = await fetch(`${API_URL}/api/dashboard/historical/${userId}`);
+        const response = await fetch(`/api/dashboard/historical/${userId}`);
         if (!response.ok) {
             throw new Error('Failed to fetch historical data');
         }
@@ -266,7 +251,7 @@ async function updateMetricsFromHistorical(userId) {
         
         // Update each metric
         for (const [metric, data] of Object.entries(metrics)) {
-            await fetch(`${API_URL}/api/dashboard/metrics/${userId}`, {
+            await fetch(`/api/dashboard/metrics/${userId}`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
@@ -294,7 +279,7 @@ async function deleteHistoricalRow(button) {
     const date = row.cells[0].querySelector('input').value;
 
     try {
-        const response = await fetch(`${API_URL}/api/dashboard/historical/${userId}/${date}`, {
+        const response = await fetch(`/api/dashboard/historical/${userId}/${date}`, {
             method: 'DELETE'
         });
 
@@ -326,7 +311,7 @@ async function updateMetric(button) {
     const change = parseFloat(row.cells[2].textContent.replace('↑', '').replace('↓', '').replace('%', ''));
 
     try {
-        const response = await fetch(`${API_URL}/api/dashboard/metrics/${userId}`, {
+        const response = await fetch(`/api/dashboard/metrics/${userId}`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -418,7 +403,7 @@ async function updateEmailStats() {
         button.disabled = true;
         button.textContent = 'Saving...';
 
-        const response = await fetch(`${API_URL}/api/email-marketing/${userId}`, {
+        const response = await fetch(`/api/email-marketing/${userId}`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -475,7 +460,7 @@ async function updateEmailStats() {
 async function loadEmailStats(userId) {
     try {
         console.log('Loading email stats for user:', userId);
-        const response = await fetch(`${API_URL}/api/email-marketing/${userId}`);
+        const response = await fetch(`/api/email-marketing/${userId}`);
         
         if (!response.ok) {
             throw new Error('Failed to fetch email stats');
@@ -497,8 +482,8 @@ async function loadEmailStats(userId) {
 async function loadEmailSuggestions(userId) {
     try {
         const url = userId 
-            ? `${API_URL}/api/email-marketing/suggestions?userId=${userId}`
-            : `${API_URL}/api/email-marketing/suggestions`;
+            ? `/api/email-marketing/suggestions?userId=${userId}`
+            : '/api/email-marketing/suggestions';
             
         const response = await fetch(url);
         if (!response.ok) {
@@ -542,7 +527,7 @@ async function submitSuggestion(event) {
         const suggestion = document.getElementById('suggestionInput').value;
         const username = document.getElementById('userSelect').selectedOptions[0].text.split(' ')[0];
         
-        const response = await fetch(`${API_URL}/api/email-marketing/suggest`, {
+        const response = await fetch('/api/email-marketing/suggest', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -599,7 +584,7 @@ const debouncedUpdateWebsiteState = debounce(async (state) => {
         console.log(`Updating website state to ${state} for user ${userId}`);
         
         // Simple state update endpoint
-        const response = await fetch(`${API_URL}/api/website-config/${userId}/state`, {
+        const response = await fetch(`/api/website-config/${userId}/state`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -638,7 +623,7 @@ async function loadWebsiteConfig(userId) {
         console.log('Loading website configuration for user:', userId);
         currentUserId = userId;
         
-        const response = await fetch(`${API_URL}/api/website-config/${userId}`);
+        const response = await fetch(`/api/website-config/${userId}`);
         if (!response.ok) {
             throw new Error(`Failed to fetch website configuration: ${response.status}`);
         }
@@ -789,7 +774,7 @@ async function saveWebsiteDetails() {
         console.log('Saving website details:', websiteData);
         
         // Save to server
-        const response = await fetch(`${API_URL}/api/website-config/${userId}`, {
+        const response = await fetch(`/api/website-config/${userId}`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -853,64 +838,74 @@ function notifyDashboardOfWebsiteUpdate() {
 
 // Document load event listeners
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('UserContent page initialized');
-    
     // Initialize the page first
     initUserContentPage();
     
     // Then load users
-    loadUsers();
-    
-    // Set up user selection change listener
-    document.getElementById('userSelect').addEventListener('change', handleUserSelection);
+    loadUsers().then(() => {
+        // Add event listener for user selection
+        const userSelect = document.getElementById('userSelect');
+        if (userSelect) {
+            userSelect.addEventListener('change', function(event) {
+                const userId = event.target.value;
+                if (userId) {
+                    loadEmailStats(userId);
+                    loadWebsiteConfig(userId);
+                    loadEmailSuggestions(userId);
+                    loadLogoPreferenceNotes(userId);
+                    // Load other data as needed
+                }
+            });
+        }
 
-    // Add event listener for state toggle
-    const stateToggle = document.getElementById('stateToggle');
-    if (stateToggle) {
-        stateToggle.addEventListener('change', function(event) {
-            console.log('Toggle changed, new state:', event.target.checked ? 2 : 1);
-            const newState = event.target.checked ? 2 : 1;
-            debouncedUpdateWebsiteState(newState);
-        });
-    } else {
-        console.error('State toggle element not found in DOM');
-    }
+        // Add event listener for state toggle
+        const stateToggle = document.getElementById('stateToggle');
+        if (stateToggle) {
+            stateToggle.addEventListener('change', function(event) {
+                console.log('Toggle changed, new state:', event.target.checked ? 2 : 1);
+                const newState = event.target.checked ? 2 : 1;
+                debouncedUpdateWebsiteState(newState);
+            });
+        } else {
+            console.error('State toggle element not found in DOM');
+        }
 
-    // Add save website details button event listener
-    const saveWebsiteDetailsBtn = document.getElementById('saveWebsiteDetails');
-    if (saveWebsiteDetailsBtn) {
-        saveWebsiteDetailsBtn.addEventListener('click', saveWebsiteDetails);
-    }
+        // Add save website details button event listener
+        const saveWebsiteDetailsBtn = document.getElementById('saveWebsiteDetails');
+        if (saveWebsiteDetailsBtn) {
+            saveWebsiteDetailsBtn.addEventListener('click', saveWebsiteDetails);
+        }
 
-    // Add preview URL input change listener
-    const websitePreviewUrlInput = document.getElementById('websitePreviewUrl');
-    if (websitePreviewUrlInput) {
-        websitePreviewUrlInput.addEventListener('input', updatePreviewImage);
-    }
+        // Add preview URL input change listener
+        const websitePreviewUrlInput = document.getElementById('websitePreviewUrl');
+        if (websitePreviewUrlInput) {
+            websitePreviewUrlInput.addEventListener('input', updatePreviewImage);
+        }
 
-    // Add event listener for email suggestion form
-    const suggestionForm = document.getElementById('suggestionForm');
-    if (suggestionForm) {
-        suggestionForm.addEventListener('submit', submitSuggestion);
-    }
+        // Add event listener for email suggestion form
+        const suggestionForm = document.getElementById('suggestionForm');
+        if (suggestionForm) {
+            suggestionForm.addEventListener('submit', submitSuggestion);
+        }
 
-    // Add event listener for website query form
-    const websiteQueryForm = document.getElementById('websiteQueryForm');
-    if (websiteQueryForm) {
-        websiteQueryForm.addEventListener('submit', submitWebsiteQuery);
-    }
+        // Add event listener for website query form
+        const websiteQueryForm = document.getElementById('websiteQueryForm');
+        if (websiteQueryForm) {
+            websiteQueryForm.addEventListener('submit', submitWebsiteQuery);
+        }
 
-    // Add event listener for website config form
-    const websiteConfigForm = document.getElementById('websiteConfigForm');
-    if (websiteConfigForm) {
-        websiteConfigForm.addEventListener('submit', submitWebsiteConfig);
-    }
+        // Add event listener for website config form
+        const websiteConfigForm = document.getElementById('websiteConfigForm');
+        if (websiteConfigForm) {
+            websiteConfigForm.addEventListener('submit', submitWebsiteConfig);
+        }
 
-    // Select first user by default if available
-    if (userSelect && userSelect.options.length > 1) {
-        userSelect.selectedIndex = 1; // Select the first actual user
-        userSelect.dispatchEvent(new Event('change'));
-    }
+        // Select first user by default if available
+        if (userSelect && userSelect.options.length > 1) {
+            userSelect.selectedIndex = 1; // Select the first actual user
+            userSelect.dispatchEvent(new Event('change'));
+        }
+    });
 });
 
 // Submit website query (from state 2)
@@ -940,7 +935,7 @@ async function submitWebsiteQuery(event) {
         submitButton.disabled = true;
         submitButton.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Submitting...';
         
-        const response = await fetch(`${API_URL}/api/website-config/${userId}/query`, {
+        const response = await fetch(`/api/website-config/${userId}/query`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -978,7 +973,7 @@ async function submitWebsiteQuery(event) {
 async function loadLogoPreferenceNotes(userId) {
     try {
         console.log('Loading logo preference notes for user:', userId);
-        const response = await fetch(`${API_URL}/api/logo-preference/${userId}`);
+        const response = await fetch(`/api/logo-preference/${userId}`);
         
         if (!response.ok) {
             throw new Error('Failed to fetch logo preferences');
@@ -1016,7 +1011,7 @@ async function loadLogoPreferenceNotes(userId) {
 // Load website queries
 async function loadWebsiteQueries(userId) {
     try {
-        const response = await fetch(`${API_URL}/api/website-config/${userId}/queries`);
+        const response = await fetch(`/api/website-config/${userId}/queries`);
         
         if (!response.ok) {
             throw new Error('Failed to fetch website queries');
@@ -1091,7 +1086,7 @@ async function submitWebsiteConfig(event) {
         };
         
         // Send to server
-        const response = await fetch(`${API_URL}/api/website-config/${userId}`, {
+        const response = await fetch(`/api/website-config/${userId}`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -1119,31 +1114,4 @@ async function submitWebsiteConfig(event) {
             submitButton.innerHTML = 'Submit Configuration';
         }
     }
-}
-
-// Handle user selection change
-function handleUserSelection(event) {
-    const userId = event.target.value;
-    
-    if (!userId) {
-        console.log('No user selected');
-        return;
-    }
-    
-    console.log(`User selected: ${userId}`);
-    
-    // Store selected user ID in localStorage for persistence
-    localStorage.setItem('selectedUserId', userId);
-    
-    // Load user-specific data
-    loadEmailStats(userId);
-    loadWebsiteConfig(userId);
-    loadEmailSuggestions(userId);
-    loadLogoPreferenceNotes(userId);
-    loadInstagramMarketing(userId);
-    
-    // Enable user-specific UI elements
-    document.querySelectorAll('.user-dependent').forEach(el => {
-        el.removeAttribute('disabled');
-    });
 }

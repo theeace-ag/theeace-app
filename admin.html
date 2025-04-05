@@ -184,34 +184,34 @@
     </div>
     
     <div class="admin-container">
-        <!-- Add User Form -->
-        <section class="form-section">
+        <!-- Single User Addition -->
+        <div class="admin-box">
             <h2>Add New User</h2>
-            <form id="addUserForm">
+            <p class="subtitle">Create a single user account</p>
+            
+            <form id="addUserForm" class="user-form">
                 <div class="form-group">
-                    <label for="username">Username:</label>
-                    <input type="text" id="username" name="username" required>
+                    <input type="text" id="newUsername" required>
+                    <label>Username</label>
                 </div>
+                
                 <div class="form-group">
-                    <label for="password">Password:</label>
-                    <input type="password" id="password" name="password" required>
+                    <input type="text" id="newUserId" required>
+                    <label>User ID</label>
                 </div>
+                
                 <div class="form-group">
-                    <label for="email">Email:</label>
-                    <input type="email" id="email" name="email">
+                    <input type="password" id="newPasskey" required>
+                    <label>Password</label>
                 </div>
-                <button type="submit" class="btn primary">Add User</button>
-                <div id="addUserStatus"></div>
+                
+                <button type="submit" class="sign-in-btn">
+                    <span class="btn-text">Add User</span>
+                    <div class="loader"></div>
+                </button>
             </form>
-        </section>
-        
-        <!-- User List Section -->
-        <section class="users-section">
-            <h2>User List</h2>
-            <div id="usersList" class="users-list-container">
-                <p>Loading users...</p>
-            </div>
-        </section>
+            <div id="singleUserMessage"></div>
+        </div>
         
         <!-- Bulk Import -->
         <div class="admin-box">

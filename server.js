@@ -41,7 +41,6 @@ const dirs = [
 
 dirs.forEach(dir => {
     if (!fs.existsSync(dir)) {
-        console.log(`Creating directory: ${dir}`);
         fs.mkdirSync(dir, { recursive: true });
     }
 });
@@ -59,20 +58,7 @@ const dataFiles = {
 Object.entries(dataFiles).forEach(([file, defaultContent]) => {
     const filePath = path.join(__dirname, file);
     if (!fs.existsSync(filePath)) {
-        console.log(`Creating data file: ${filePath}`);
-        
-        // Ensure the directory exists
-        const dir = path.dirname(filePath);
-        if (!fs.existsSync(dir)) {
-            fs.mkdirSync(dir, { recursive: true });
-        }
-        
-        try {
-            fs.writeFileSync(filePath, JSON.stringify(defaultContent, null, 2));
-            console.log(`Successfully created: ${filePath}`);
-        } catch (err) {
-            console.error(`Error creating ${filePath}:`, err);
-        }
+        fs.writeFileSync(filePath, JSON.stringify(defaultContent, null, 2));
     }
 });
 
@@ -98,54 +84,10 @@ let instagramData = {};
 // Helper function to read users
 function readUsers() {
     try {
-        console.log(`[DEBUG] Attempting to read users from: ${usersFilePath}`);
-        
-        if (!fs.existsSync(usersFilePath)) {
-            console.log(`[DEBUG] Users file doesn't exist, creating empty file at: ${usersFilePath}`);
-            
-            // Check if directory exists
-            const dir = path.dirname(usersFilePath);
-            if (!fs.existsSync(dir)) {
-                console.log(`[DEBUG] Creating directory: ${dir}`);
-                fs.mkdirSync(dir, { recursive: true });
-            }
-            
-            // Create empty users file
-            writeUsers([]);
-            return [];
-        }
-        
-        console.log(`[DEBUG] Users file exists, reading content`);
-        const data = fs.readFileSync(usersFilePath, 'utf8');
-        
-        if (!data || data.trim() === '') {
-            console.log('[DEBUG] Users file is empty, initializing with empty array');
-            return [];
-        }
-        
-        try {
-            const users = JSON.parse(data);
-            console.log(`[DEBUG] Successfully parsed users JSON, found ${users.length} users`);
-            
-            if (!Array.isArray(users)) {
-                console.warn('[DEBUG] Users data is not an array, resetting to empty array');
-                writeUsers([]);
-                return [];
-            }
-            
-            if (users.length > 0) {
-                console.log(`[DEBUG] First user in database: ${JSON.stringify(users[0], null, 2)}`);
-            }
-            
-            return users;
-        } catch (parseError) {
-            console.error('[DEBUG] Error parsing users JSON:', parseError);
-            console.log('[DEBUG] Resetting users file to empty array');
-            writeUsers([]);
-            return [];
-        }
+        const data = fs.readFileSync(usersFilePath);
+        return JSON.parse(data);
     } catch (error) {
-        console.error('[DEBUG] Error reading users file:', error);
+        console.error('Error reading users:', error);
         return [];
     }
 }
@@ -153,18 +95,9 @@ function readUsers() {
 // Helper function to write users
 function writeUsers(users) {
     try {
-        // Ensure the directory exists
-        const dir = path.dirname(usersFilePath);
-        if (!fs.existsSync(dir)) {
-            fs.mkdirSync(dir, { recursive: true });
-        }
-        
-        // Write the file
-        fs.writeFileSync(usersFilePath, JSON.stringify(users, null, 2), 'utf8');
-        console.log(`Successfully wrote ${users.length} users to file`);
-        return true;
+        fs.writeFileSync(usersFilePath, JSON.stringify(users, null, 2));
     } catch (error) {
-        console.error('Error writing users file:', error);
+        console.error('Error writing users:', error);
         throw error;
     }
 }
@@ -272,161 +205,62 @@ async function sendEmail(to, subject, text) {
     }
 }
 
-// API endpoint to get all users
+// Get all users
 app.get('/api/users', (req, res) => {
     try {
-        console.log('[DEBUG] GET /api/users - Request received');
-        console.log(`[DEBUG] Current directory: ${__dirname}`);
-        console.log(`[DEBUG] Users file path: ${usersFilePath}`);
-        
-        const fileExists = fs.existsSync(usersFilePath);
-        console.log(`[DEBUG] Users file exists: ${fileExists}`);
-        
-        if (!fileExists) {
-            console.log('[DEBUG] Creating empty users file');
-            writeUsers([]);
-        }
-        
+        console.log('GET /api/users - Fetching all users');
         const users = readUsers();
-        console.log(`[DEBUG] Found ${users.length} users in the database`);
-        
-        if (users.length > 0) {
-            console.log(`[DEBUG] First user: ${JSON.stringify(users[0], null, 2)}`);
-        }
-        
+        console.log('Users found:', users.length);
+        console.log('User data:', JSON.stringify(users, null, 2));
         res.json(users);
     } catch (error) {
-        console.error('[DEBUG] Error fetching users:', error);
+        console.error('Error in GET /api/users:', error);
         res.status(500).json({ 
-            error: 'Failed to fetch users',
-            message: error.message,
-            stack: error.stack 
+            message: 'Error reading users',
+            error: error.message 
         });
     }
 });
 
-// Add a new user
+// Add single user
 app.post('/api/users', (req, res) => {
     try {
-        console.log('[DEBUG] POST /api/users - Adding new user');
-        console.log(`[DEBUG] Request body: ${JSON.stringify(req.body)}`);
+        console.log('Received user data:', req.body);
+        const { username, userId, passkey } = req.body;
         
-        const { username, password, email } = req.body;
-        
-        // Validation
-        if (!username || !password) {
-            console.log('[DEBUG] Missing required fields');
-            return res.status(400).json({ error: 'Username and password are required' });
+        // Validate input
+        if (!username || !userId || !passkey) {
+            console.log('Missing fields:', { username, userId, passkey });
+            return res.status(400).json({ message: 'All fields are required' });
         }
         
         const users = readUsers();
-        console.log(`[DEBUG] Current user count: ${users.length}`);
         
-        // Check if username already exists
-        const userExists = users.some(user => user.username === username);
-        if (userExists) {
-            console.log(`[DEBUG] Username ${username} already exists`);
-            return res.status(400).json({ error: 'Username already exists' });
+        // Check if user already exists
+        if (users.some(u => u.username === username || u.userId === userId)) {
+            console.log('User already exists:', username);
+            return res.status(400).json({ message: 'Username or User ID already exists' });
         }
         
-        // Generate unique ID
-        const userId = Date.now().toString();
-        console.log(`[DEBUG] Generated userId: ${userId}`);
-        
-        // Create user object
+        // Add new user
         const newUser = {
-            id: userId,
             username,
-            password,
-            email: email || '',
-            createdAt: new Date().toISOString()
+            userId,
+            passkey,
+            createdAt: new Date().toISOString(),
+            lastLogin: null
         };
         
-        // Add user to array
         users.push(newUser);
-        console.log(`[DEBUG] Added new user: ${JSON.stringify(newUser, null, 2)}`);
+        writeUsers(users);
+        console.log('User added successfully:', username);
         
-        // Save updated users array
-        try {
-            writeUsers(users);
-            console.log(`[DEBUG] Successfully wrote ${users.length} users to file`);
-            
-            // Create necessary data directories and files for the new user
-            createUserDataFiles(userId);
-            
-            res.status(201).json(newUser);
-        } catch (writeError) {
-            console.error('[DEBUG] Error writing users:', writeError);
-            res.status(500).json({ error: 'Failed to add user', message: writeError.message });
-        }
+        res.status(201).json(newUser);
     } catch (error) {
-        console.error('[DEBUG] Error in POST /api/users:', error);
-        res.status(500).json({ 
-            error: 'Server error adding user',
-            message: error.message,
-            stack: error.stack
-        });
+        console.error('Error adding user:', error);
+        res.status(500).json({ message: 'Error adding user' });
     }
 });
-
-// Helper function to create user data files
-function createUserDataFiles(userId) {
-    try {
-        console.log(`[DEBUG] Creating data files for user: ${userId}`);
-        
-        // Define directories to create
-        const directories = [
-            path.join(__dirname, 'data', 'email-stats'),
-            path.join(__dirname, 'data', 'metrics'),
-            path.join(__dirname, 'data', 'historical'),
-            path.join(__dirname, 'data', 'instagram-marketing')
-        ];
-        
-        // Create directories if they don't exist
-        directories.forEach(dir => {
-            if (!fs.existsSync(dir)) {
-                console.log(`[DEBUG] Creating directory: ${dir}`);
-                fs.mkdirSync(dir, { recursive: true });
-            }
-        });
-        
-        // Create initial data files
-        const initialFiles = [
-            { 
-                path: path.join(__dirname, 'data', 'email-stats', `${userId}.json`),
-                content: { sent: 0, total: 0, lastUpdated: new Date().toISOString() }
-            },
-            { 
-                path: path.join(__dirname, 'data', 'metrics', `${userId}.json`),
-                content: { sessions: 0, sales: 0, lastUpdated: new Date().toISOString() }
-            },
-            { 
-                path: path.join(__dirname, 'data', 'historical', `${userId}.json`),
-                content: { data: [], lastUpdated: new Date().toISOString() }
-            },
-            { 
-                path: path.join(__dirname, 'data', 'instagram-marketing', `${userId}.json`),
-                content: { 
-                    accountsReached: 0, 
-                    leadsConverted: 0,
-                    niches: ["Fashion", "Technology", "Food", "Travel", "Fitness"],
-                    lastUpdated: new Date().toISOString() 
-                }
-            }
-        ];
-        
-        // Write initial data files
-        initialFiles.forEach(file => {
-            console.log(`[DEBUG] Creating file: ${file.path}`);
-            fs.writeFileSync(file.path, JSON.stringify(file.content, null, 2));
-        });
-        
-        console.log(`[DEBUG] Successfully created all data files for user: ${userId}`);
-    } catch (error) {
-        console.error(`[DEBUG] Error creating user data files: ${error.message}`);
-        throw error;
-    }
-}
 
 // Bulk import users via CSV
 app.post('/api/users/bulk-import', upload.single('csv'), (req, res) => {
@@ -524,64 +358,26 @@ app.post('/api/users/bulk-import', upload.single('csv'), (req, res) => {
 // Login endpoint
 app.post('/api/login', (req, res) => {
     try {
-        console.log('[DEBUG] POST /api/login - Login attempt');
-        const { username, password } = req.body;
-        
-        // Validate request
-        if (!username || !password) {
-            console.log('[DEBUG] Login failed: Missing username or password');
-            return res.status(400).json({ error: 'Username and password are required' });
-        }
-        
-        console.log(`[DEBUG] Login attempt for username: ${username}`);
-        
-        // Get all users
+        const { username, userId, passkey } = req.body;
         const users = readUsers();
-        console.log(`[DEBUG] Found ${users.length} users in database`);
         
-        // Find user by username
-        const user = users.find(u => u.username === username);
+        const user = users.find(u => 
+            u.username === username && 
+            u.userId === userId && 
+            u.passkey === passkey
+        );
+        
         if (!user) {
-            console.log(`[DEBUG] Login failed: User '${username}' not found`);
-            return res.status(401).json({ error: 'Invalid credentials' });
+            return res.status(401).json({ message: 'Invalid credentials' });
         }
         
-        // Check password
-        // Note: In a production environment, you should use a proper password hashing library
-        if (user.password !== password) {
-            console.log(`[DEBUG] Login failed: Incorrect password for user '${username}'`);
-            return res.status(401).json({ error: 'Invalid credentials' });
-        }
-        
-        // Login successful
-        console.log(`[DEBUG] Login successful for username: ${username}`);
-        
-        // Update last login timestamp (optional)
+        // Update last login
         user.lastLogin = new Date().toISOString();
         writeUsers(users);
         
-        // Create a sanitized user object (without password)
-        const sanitizedUser = {
-            id: user.id || user.userId, // Support both formats
-            username: user.username,
-            email: user.email || '',
-            lastLogin: user.lastLogin,
-            createdAt: user.createdAt
-        };
-        
-        // Return successful response with user data
-        res.json({ 
-            success: true, 
-            message: 'Login successful',
-            user: sanitizedUser
-        });
-        
+        res.json({ message: 'Login successful', user });
     } catch (error) {
-        console.error('[DEBUG] Error in login endpoint:', error);
-        res.status(500).json({ 
-            error: 'Server error during login',
-            message: error.message
-        });
+        res.status(500).json({ message: 'Error during login' });
     }
 });
 
@@ -784,77 +580,33 @@ app.post('/api/dashboard/historical/:userId', async (req, res) => {
             return res.status(400).json({ error: 'Missing required fields' });
         }
         
-        console.log('[DEBUG] Saving historical data for user:', userId);
-        console.log('[DEBUG] Data received:', { date, sessions, sales, orders, conversion });
-        
-        // Ensure the historical directory exists
-        const historicalDir = path.join(__dirname, 'data', 'historical');
-        if (!fs.existsSync(historicalDir)) {
-            console.log(`[DEBUG] Creating historical directory: ${historicalDir}`);
-            fs.mkdirSync(historicalDir, { recursive: true });
-        }
-        
         const historicalPath = path.join(__dirname, 'data', 'historical', `${userId}.json`);
-        console.log(`[DEBUG] Historical data file path: ${historicalPath}`);
-        
         let historical = [];
         
-        // Check if file exists and read it
         if (fs.existsSync(historicalPath)) {
-            console.log('[DEBUG] Existing historical file found, reading contents');
-            try {
-                const data = fs.readFileSync(historicalPath, 'utf8');
-                if (data && data.trim() !== '') {
-                    historical = JSON.parse(data);
-                    if (!Array.isArray(historical)) {
-                        console.log('[DEBUG] Historical data is not an array, resetting to empty array');
-                        historical = [];
-                    }
-                }
-            } catch (readError) {
-                console.error('[DEBUG] Error reading historical file:', readError);
-                historical = [];
-            }
-        } else {
-            console.log('[DEBUG] Historical file does not exist, will create new one');
+            historical = JSON.parse(fs.readFileSync(historicalPath, 'utf8'));
         }
-        
-        console.log(`[DEBUG] Current historical entries: ${historical.length}`);
         
         // Remove existing entry for the same date if it exists
         historical = historical.filter(entry => entry.date !== date);
         
         // Add new entry
-        const newEntry = {
+        historical.push({
             date,
             sessions: Number(sessions),
             sales: Number(sales),
             orders: Number(orders),
             conversion: Number(conversion)
-        };
-        
-        historical.push(newEntry);
-        console.log('[DEBUG] Added new historical entry:', newEntry);
+        });
         
         // Sort by date
         historical.sort((a, b) => new Date(a.date) - new Date(b.date));
         
-        // Write the file
-        try {
-            fs.writeFileSync(historicalPath, JSON.stringify(historical, null, 2), 'utf8');
-            console.log('[DEBUG] Successfully wrote historical data to file');
-            res.json({ success: true, historical });
-        } catch (writeError) {
-            console.error('[DEBUG] Error writing historical data:', writeError);
-            throw writeError;
-        }
+        fs.writeFileSync(historicalPath, JSON.stringify(historical, null, 2));
+        res.json({ success: true, historical });
     } catch (error) {
-        console.error('[DEBUG] Error saving historical data:', error);
-        res.status(500).json({ 
-            error: 'Failed to save historical data', 
-            message: error.message,
-            stack: error.stack
-        });
+        console.error('Error saving historical data:', error);
+        res.status(500).json({ error: 'Failed to save historical data' });
     }
 });
 

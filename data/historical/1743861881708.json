@@ -1,0 +1,16 @@
+[
+  {
+    "date": "2025-04-05",
+    "sessions": 1,
+    "sales": 20,
+    "orders": 1,
+    "conversion": 100
+  },
+  {
+    "date": "2025-04-10",
+    "sessions": 260,
+    "sales": 40000,
+    "orders": 43,
+    "conversion": 20
+  }
+]

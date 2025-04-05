@@ -50,5 +50,37 @@
       "secondary": "#ffffff",
       "tertiary": "#cccccc"
     }
+  },
+  "1743861881708": {
+    "userId": "1743861881708",
+    "state": 1,
+    "websiteUrl": "",
+    "previewImageUrl": "",
+    "brandName": "",
+    "websiteType": "",
+    "colors": {
+      "primary": "#000000",
+      "secondary": "#ffffff",
+      "tertiary": "#cccccc"
+    },
+    "referenceWebsite": "",
+    "submissions": [],
+    "lastUpdated": "2025-04-05T14:05:13.315Z"
+  },
+  "ayushmaan1234": {
+    "userId": "ayushmaan1234",
+    "state": 2,
+    "websiteUrl": "",
+    "previewImageUrl": "",
+    "brandName": "",
+    "websiteType": "",
+    "colors": {
+      "primary": "#000000",
+      "secondary": "#ffffff",
+      "tertiary": "#cccccc"
+    },
+    "referenceWebsite": "",
+    "submissions": [],
+    "lastUpdated": "2025-04-05T14:17:57.908Z"
   }
 }

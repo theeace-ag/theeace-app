@@ -1,142 +1,49 @@
-// Define API URL based on environment
-const API_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
-    ? ''  // Use relative URLs for local development
-    : '';  // Use relative URLs for production too
+// API URL configuration
+const API_URL = window.location.hostname === 'localhost' 
+    ? 'http://localhost:5000' 
+    : 'https://theeace-login-portal.onrender.com';
 
-document.addEventListener('DOMContentLoaded', function() {
-    console.log('Admin panel initialized');
+// Load users when the page loads
+window.onload = function() {
     loadUsers();
-    
-    // Set up event listeners
-    document.getElementById('addUserForm').addEventListener('submit', addUser);
-    document.getElementById('importCSVForm').addEventListener('submit', importUsers);
-    document.getElementById('deleteUserForm').addEventListener('submit', deleteUser);
-});
+};
 
-// Load and display users
-function loadUsers() {
-    console.log('Loading users...');
+// Add Single User
+document.getElementById('addUserForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const username = document.getElementById('newUsername').value.trim();
+    const userId = document.getElementById('newUserId').value.trim();
+    const passkey = document.getElementById('newPasskey').value;
+    const messageDiv = document.getElementById('singleUserMessage');
+    const submitBtn = e.target.querySelector('.sign-in-btn');
     
-    fetch(`${API_URL}/api/users`)
-        .then(response => {
-            if (!response.ok) {
-                throw new Error(`HTTP error! Status: ${response.status}`);
-            }
-            return response.json();
-        })
-        .then(users => {
-            console.log(`Loaded ${users.length} users`);
-            displayUsers(users);
-        })
-        .catch(error => {
-            console.error('Error loading users:', error);
-            document.getElementById('usersList').innerHTML = `<p class="error">Error loading users: ${error.message}</p>`;
+    try {
+        submitBtn.classList.add('loading');
+        const response = await fetch(`${API_URL}/api/users`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ username, userId, passkey })
         });
-}
-
-// Display users in the UI
-function displayUsers(users) {
-    const usersList = document.getElementById('usersList');
-    
-    if (users.length === 0) {
-        usersList.innerHTML = '<p>No users found.</p>';
-        return;
-    }
-    
-    const table = document.createElement('table');
-    table.className = 'users-table';
-    
-    // Create table header
-    const thead = document.createElement('thead');
-    thead.innerHTML = `
-        <tr>
-            <th>ID</th>
-            <th>Username</th>
-            <th>Email</th>
-            <th>Created</th>
-        </tr>
-    `;
-    table.appendChild(thead);
-    
-    // Create table body
-    const tbody = document.createElement('tbody');
-    users.forEach(user => {
-        const tr = document.createElement('tr');
-        const userId = user.id || user.userId; // Support both formats
         
-        tr.innerHTML = `
-            <td>${userId}</td>
-            <td>${user.username}</td>
-            <td>${user.email || 'N/A'}</td>
-            <td>${new Date(user.createdAt).toLocaleString()}</td>
-        `;
-        tbody.appendChild(tr);
-    });
-    table.appendChild(tbody);
-    
-    usersList.innerHTML = '';
-    usersList.appendChild(table);
-}
-
-// Add a new user
-function addUser(event) {
-    event.preventDefault();
-    
-    const username = document.getElementById('username').value.trim();
-    const password = document.getElementById('password').value.trim();
-    const email = document.getElementById('email').value.trim();
-    
-    if (!username || !password) {
-        alert('Username and password are required');
-        return;
-    }
-    
-    console.log('Adding new user:', username);
-    
-    const userData = {
-        username,
-        password,
-        email
-    };
-    
-    fetch(`${API_URL}/api/users`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(userData)
-    })
-    .then(response => {
-        if (!response.ok) {
-            return response.json().then(err => {
-                throw new Error(err.error || 'Failed to add user');
-            });
+        const data = await response.json();
+        
+        if (response.ok) {
+            messageDiv.className = 'success-message';
+            messageDiv.textContent = 'User added successfully!';
+            loadUsers(); // Refresh user list
+            e.target.reset();
+        } else {
+            throw new Error(data.message);
         }
-        return response.json();
-    })
-    .then(newUser => {
-        console.log('User added successfully:', newUser);
-        document.getElementById('addUserForm').reset();
-        loadUsers(); // Reload the users list
-        
-        // Show success message
-        const statusMsg = document.getElementById('addUserStatus');
-        statusMsg.textContent = `User ${newUser.username} added successfully`;
-        statusMsg.className = 'success';
-        setTimeout(() => {
-            statusMsg.textContent = '';
-            statusMsg.className = '';
-        }, 3000);
-    })
-    .catch(error => {
-        console.error('Error adding user:', error);
-        
-        // Show error message
-        const statusMsg = document.getElementById('addUserStatus');
-        statusMsg.textContent = error.message;
-        statusMsg.className = 'error';
-    });
-}
+    } catch (error) {
+        messageDiv.className = 'error-message';
+        messageDiv.textContent = error.message || 'Error adding user';
+    } finally {
+        submitBtn.classList.remove('loading');
+    }
+});
 
 // Upload CSV
 async function uploadCSV() {
@@ -189,6 +96,26 @@ async function uploadCSV() {
         messageDiv.textContent = error.message || 'Error importing users';
     } finally {
         uploadBtn.classList.remove('loading');
+    }
+}
+
+// Load Users
+async function loadUsers() {
+    try {
+        const response = await fetch(`${API_URL}/api/users`);
+        const users = await response.json();
+        
+        const tbody = document.getElementById('userList');
+        tbody.innerHTML = users.map(user => `
+            <tr>
+                <td>${user.username}</td>
+                <td>${user.userId}</td>
+                <td>${new Date(user.createdAt).toLocaleString()}</td>
+                <td>${user.lastLogin ? new Date(user.lastLogin).toLocaleString() : 'Never'}</td>
+            </tr>
+        `).join('');
+    } catch (error) {
+        console.error('Error loading users:', error);
     }
 }
 
