@@ -1,7 +1,7 @@
-// API URL configuration
-const API_URL = window.location.hostname === 'localhost' 
-    ? 'http://localhost:5000' 
-    : '';  // Empty string for relative paths in production
+// Define API URL based on environment
+const API_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
+    ? ''  // Use relative URLs for local development
+    : '';  // Use relative URLs for production too
 
 // General CSS styles for the user content page
 const generalCSS = `
@@ -37,41 +37,51 @@ const generalCSS = `
 let currentUserId = null;
 let currentConfig = null;
 
-// Load users into select dropdown
-async function loadUsers() {
-    try {
-        console.log('Fetching users...');
-        const response = await fetch(`${API_URL}/api/users`);
-        
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        
-        const users = await response.json();
-        console.log('Loaded users:', users);
-        
-        const userSelect = document.getElementById('userSelect');
-        userSelect.innerHTML = '<option value="">Select a user...</option>';
-        
-        if (users.length === 0) {
-            console.log('No users found');
-            userSelect.innerHTML += '<option disabled>No users available</option>';
-            return;
-        }
-        
-        users.forEach(user => {
-            const option = document.createElement('option');
-            option.value = user.userId;
-            option.textContent = `${user.username} (${user.userId})`;
-            userSelect.appendChild(option);
-            console.log('Added user option:', user.username);
+// Load users from API
+function loadUsers() {
+    console.log('Loading users...');
+    
+    fetch(`${API_URL}/api/users`)
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! Status: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(users => {
+            console.log(`Loaded ${users.length} users`);
+            populateUserDropdown(users);
+        })
+        .catch(error => {
+            console.error('Error loading users:', error);
+            const userSelect = document.getElementById('userSelect');
+            userSelect.innerHTML = '<option value="">Error loading users</option>';
         });
-    } catch (error) {
-        console.error('Error loading users:', error);
-        const userSelect = document.getElementById('userSelect');
-        userSelect.innerHTML = '<option value="">Error loading users</option>';
-        alert('Error loading users. Please try refreshing the page.');
+}
+
+// Populate the user dropdown
+function populateUserDropdown(users) {
+    const userSelect = document.getElementById('userSelect');
+    
+    // Clear existing options
+    userSelect.innerHTML = '';
+    
+    if (users.length === 0) {
+        userSelect.innerHTML = '<option value="">No users available</option>';
+        return;
     }
+    
+    // Add default option
+    userSelect.innerHTML = '<option value="">Select a user...</option>';
+    
+    // Add an option for each user
+    users.forEach(user => {
+        const option = document.createElement('option');
+        const userId = user.id || user.userId; // Support both formats
+        option.value = userId;
+        option.textContent = user.username;
+        userSelect.appendChild(option);
+    });
 }
 
 // Load user's metrics
@@ -843,74 +853,64 @@ function notifyDashboardOfWebsiteUpdate() {
 
 // Document load event listeners
 document.addEventListener('DOMContentLoaded', function() {
+    console.log('UserContent page initialized');
+    
     // Initialize the page first
     initUserContentPage();
     
     // Then load users
-    loadUsers().then(() => {
-        // Add event listener for user selection
-        const userSelect = document.getElementById('userSelect');
-        if (userSelect) {
-            userSelect.addEventListener('change', function(event) {
-                const userId = event.target.value;
-                if (userId) {
-                    loadEmailStats(userId);
-                    loadWebsiteConfig(userId);
-                    loadEmailSuggestions(userId);
-                    loadLogoPreferenceNotes(userId);
-                    // Load other data as needed
-                }
-            });
-        }
+    loadUsers();
+    
+    // Set up user selection change listener
+    document.getElementById('userSelect').addEventListener('change', handleUserSelection);
 
-        // Add event listener for state toggle
-        const stateToggle = document.getElementById('stateToggle');
-        if (stateToggle) {
-            stateToggle.addEventListener('change', function(event) {
-                console.log('Toggle changed, new state:', event.target.checked ? 2 : 1);
-                const newState = event.target.checked ? 2 : 1;
-                debouncedUpdateWebsiteState(newState);
-            });
-        } else {
-            console.error('State toggle element not found in DOM');
-        }
+    // Add event listener for state toggle
+    const stateToggle = document.getElementById('stateToggle');
+    if (stateToggle) {
+        stateToggle.addEventListener('change', function(event) {
+            console.log('Toggle changed, new state:', event.target.checked ? 2 : 1);
+            const newState = event.target.checked ? 2 : 1;
+            debouncedUpdateWebsiteState(newState);
+        });
+    } else {
+        console.error('State toggle element not found in DOM');
+    }
 
-        // Add save website details button event listener
-        const saveWebsiteDetailsBtn = document.getElementById('saveWebsiteDetails');
-        if (saveWebsiteDetailsBtn) {
-            saveWebsiteDetailsBtn.addEventListener('click', saveWebsiteDetails);
-        }
+    // Add save website details button event listener
+    const saveWebsiteDetailsBtn = document.getElementById('saveWebsiteDetails');
+    if (saveWebsiteDetailsBtn) {
+        saveWebsiteDetailsBtn.addEventListener('click', saveWebsiteDetails);
+    }
 
-        // Add preview URL input change listener
-        const websitePreviewUrlInput = document.getElementById('websitePreviewUrl');
-        if (websitePreviewUrlInput) {
-            websitePreviewUrlInput.addEventListener('input', updatePreviewImage);
-        }
+    // Add preview URL input change listener
+    const websitePreviewUrlInput = document.getElementById('websitePreviewUrl');
+    if (websitePreviewUrlInput) {
+        websitePreviewUrlInput.addEventListener('input', updatePreviewImage);
+    }
 
-        // Add event listener for email suggestion form
-        const suggestionForm = document.getElementById('suggestionForm');
-        if (suggestionForm) {
-            suggestionForm.addEventListener('submit', submitSuggestion);
-        }
+    // Add event listener for email suggestion form
+    const suggestionForm = document.getElementById('suggestionForm');
+    if (suggestionForm) {
+        suggestionForm.addEventListener('submit', submitSuggestion);
+    }
 
-        // Add event listener for website query form
-        const websiteQueryForm = document.getElementById('websiteQueryForm');
-        if (websiteQueryForm) {
-            websiteQueryForm.addEventListener('submit', submitWebsiteQuery);
-        }
+    // Add event listener for website query form
+    const websiteQueryForm = document.getElementById('websiteQueryForm');
+    if (websiteQueryForm) {
+        websiteQueryForm.addEventListener('submit', submitWebsiteQuery);
+    }
 
-        // Add event listener for website config form
-        const websiteConfigForm = document.getElementById('websiteConfigForm');
-        if (websiteConfigForm) {
-            websiteConfigForm.addEventListener('submit', submitWebsiteConfig);
-        }
+    // Add event listener for website config form
+    const websiteConfigForm = document.getElementById('websiteConfigForm');
+    if (websiteConfigForm) {
+        websiteConfigForm.addEventListener('submit', submitWebsiteConfig);
+    }
 
-        // Select first user by default if available
-        if (userSelect && userSelect.options.length > 1) {
-            userSelect.selectedIndex = 1; // Select the first actual user
-            userSelect.dispatchEvent(new Event('change'));
-        }
-    });
+    // Select first user by default if available
+    if (userSelect && userSelect.options.length > 1) {
+        userSelect.selectedIndex = 1; // Select the first actual user
+        userSelect.dispatchEvent(new Event('change'));
+    }
 });
 
 // Submit website query (from state 2)
@@ -1119,4 +1119,31 @@ async function submitWebsiteConfig(event) {
             submitButton.innerHTML = 'Submit Configuration';
         }
     }
+}
+
+// Handle user selection change
+function handleUserSelection(event) {
+    const userId = event.target.value;
+    
+    if (!userId) {
+        console.log('No user selected');
+        return;
+    }
+    
+    console.log(`User selected: ${userId}`);
+    
+    // Store selected user ID in localStorage for persistence
+    localStorage.setItem('selectedUserId', userId);
+    
+    // Load user-specific data
+    loadEmailStats(userId);
+    loadWebsiteConfig(userId);
+    loadEmailSuggestions(userId);
+    loadLogoPreferenceNotes(userId);
+    loadInstagramMarketing(userId);
+    
+    // Enable user-specific UI elements
+    document.querySelectorAll('.user-dependent').forEach(el => {
+        el.removeAttribute('disabled');
+    });
 }
