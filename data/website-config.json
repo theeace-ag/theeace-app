@@ -1,0 +1,22 @@
+{
+  "ayush": {
+    "state": 1,
+    "websiteUrl": "",
+    "previewImage": null,
+    "queries": [],
+    "brandName": "mkg",
+    "websiteType": "business",
+    "colorScheme": {
+      "primary": "#000000",
+      "secondary": "#ffffff",
+      "tertiary": "#cccccc"
+    },
+    "referenceWebsite": "",
+    "colors": {
+      "primary": "#000000",
+      "secondary": "#000000",
+      "tertiary": "#000000"
+    },
+    "lastUpdated": "2025-04-03T15:46:03.766Z"
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "sessions": {
+    "value": 440,
+    "change": 0,
+    "lastUpdated": "2025-04-05T06:46:17.138Z"
+  },
+  "total_sales": {
+    "value": 6500,
+    "change": 0,
+    "lastUpdated": "2025-04-05T06:46:17.141Z"
+  },
+  "orders": {
+    "value": 50,
+    "change": 0,
+    "lastUpdated": "2025-04-05T06:46:17.145Z"
+  },
+  "conversion_rate": {
+    "value": 21.45,
+    "change": 21.45,
+    "lastUpdated": "2025-04-05T06:46:17.148Z"
+  },
+  "email_stats": {
+    "sent": 3000,
+    "total": 5000,
+    "lastUpdated": "2025-04-05T06:46:44.573Z"
+  }
+}

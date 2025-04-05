@@ -1,0 +1,37 @@
+[
+  {
+    "date": "2024-03-05",
+    "sessions": 220,
+    "sales": 3500,
+    "orders": 45,
+    "conversion": 20.45
+  },
+  {
+    "date": "2025-03-03",
+    "sessions": 220,
+    "sales": 3500,
+    "orders": 45,
+    "conversion": 20.45
+  },
+  {
+    "date": "2025-03-06",
+    "sessions": 220,
+    "sales": 3500,
+    "orders": 45,
+    "conversion": 20.45
+  },
+  {
+    "date": "2025-04-05",
+    "sessions": 0,
+    "sales": 0,
+    "orders": 0,
+    "conversion": 0
+  },
+  {
+    "date": "2025-06-03",
+    "sessions": 440,
+    "sales": 6500,
+    "orders": 50,
+    "conversion": 21.45
+  }
+]

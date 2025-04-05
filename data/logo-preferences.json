@@ -1,0 +1,42 @@
+{
+  "ayush": {
+    "logoType": "minimalist",
+    "timestamp": "2025-04-05T07:30:14.314Z",
+    "noteText": "User selected logo type: minimalist",
+    "lastUpdated": "2025-04-05T07:30:14.317Z",
+    "notes": [
+      {
+        "timestamp": "2025-04-05T06:35:33.793Z",
+        "text": "User selected logo type: minimalist"
+      },
+      {
+        "timestamp": "2025-04-05T06:47:01.027Z",
+        "text": "User selected logo type: modern"
+      },
+      {
+        "timestamp": "2025-04-05T07:04:42.719Z",
+        "text": "User selected logo type: modern"
+      },
+      {
+        "timestamp": "2025-04-05T07:06:10.687Z",
+        "text": "User selected logo type: vintage"
+      },
+      {
+        "timestamp": "2025-04-05T07:12:51.583Z",
+        "text": "User selected logo type: vintage"
+      },
+      {
+        "timestamp": "2025-04-05T07:30:14.317Z",
+        "text": "User selected logo type: minimalist"
+      }
+    ]
+  },
+  "nigga": {
+    "userId": "nigga",
+    "state": 1,
+    "logoUrl": null,
+    "logoType": "",
+    "notes": [],
+    "lastUpdated": "2025-04-05T07:31:23.360Z"
+  }
+}

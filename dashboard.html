@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="dashboard.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script>
+        // Verify Chart.js is loaded
+        window.addEventListener('load', function() {
+            if (typeof Chart === 'undefined') {
+                console.error('Chart.js is not loaded properly!');
+            } else {
+                console.log('Chart.js loaded successfully!');
+            }
+        });
+    </script>
+</head>
+<body>
+    <div class="dashboard-container">
+        <header class="nav-header">
+            <h1 class="nav-title">Welcome</h1>
+            <div class="nav-buttons">
+                <button id="refreshBtn" class="btn btn-outline" title="Refresh Dashboard">
+                    <i class="fas fa-sync-alt"></i>
+                    Refresh
+                </button>
+                <button id="logoutBtn" class="btn btn-outline">
+                    <i class="fas fa-sign-out-alt"></i>
+                    Logout
+                </button>
+            </div>
+        </header>
+
+        <main>
+            <section id="widgetSection" class="widget-section">
+                <div class="widget-scroll">
+                    <!-- Website Configuration Widget -->
+                    <div class="website-config-widget">
+                        <!-- State 1: Initial Configuration -->
+                        <div class="widget-state state-1">
+                            <div class="widget-header">
+                                <h2>Website Configuration</h2>
+                                <p class="subtitle">Configure your website details</p>
+                            </div>
+                            <form id="websiteConfigForm" class="config-form">
+                                <div class="form-group">
+                                    <label for="brandName">Your Brand Name</label>
+                                    <input type="text" id="brandName" name="brandName" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="websiteType">Website Type</label>
+                                    <input type="text" id="websiteType" name="websiteType" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>Color Scheme</label>
+                                    <div class="color-inputs">
+                                        <div class="color-input">
+                                            <label for="primaryColor">Primary</label>
+                                            <input type="color" id="primaryColor" name="primaryColor" required>
+                                        </div>
+                                        <div class="color-input">
+                                            <label for="secondaryColor">Secondary</label>
+                                            <input type="color" id="secondaryColor" name="secondaryColor" required>
+                                        </div>
+                                        <div class="color-input">
+                                            <label for="tertiaryColor">Tertiary</label>
+                                            <input type="color" id="tertiaryColor" name="tertiaryColor" required>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label for="referenceWebsite">Reference Website (Optional)</label>
+                                    <input type="url" id="referenceWebsite" name="referenceWebsite">
+                                </div>
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-paper-plane"></i>
+                                    Submit Configuration
+                                </button>
+                            </form>
+                        </div>
+
+                        <!-- State 2: Website Preview -->
+                        <div class="widget-state state-2" style="display: none;">
+                            <div class="widget-header">
+                                <h2>Your Website</h2>
+                                <p class="subtitle">Preview and request changes</p>
+                            </div>
+                            <div class="website-preview">
+                                <a href="#" class="preview-image" target="_blank" id="websiteLink">
+                                    <img src="" alt="Website Preview" id="websitePreview">
+                                    <div class="preview-overlay">
+                                        <span>Visit Website</span>
+                                    </div>
+                                </a>
+                            </div>
+                            <form id="websiteQueryForm" class="query-form">
+                                <div class="form-group">
+                                    <label for="changes">Changes You Want</label>
+                                    <textarea id="changes" name="changes" required></textarea>
+                                </div>
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-paper-plane"></i>
+                                    Submit Changes
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+
+                    <!-- Analytics Widget -->
+                    <div class="analytics-widget">
+                        <div class="analytics-widget-content">
+                            <!-- Sessions Card -->
+                            <div class="metric-card">
+                                <h3>Sessions</h3>
+                                <div class="metric-value">0</div>
+                                <div class="metric-change positive">0%</div>
+                                <div class="metric-chart">
+                                    <canvas id="sessionsChart"></canvas>
+                                </div>
+                            </div>
+                            
+                            <!-- Total Sales Card -->
+                            <div class="metric-card">
+                                <h3>Total Sales</h3>
+                                <div class="metric-value">₹0</div>
+                                <div class="metric-change">0%</div>
+                                <div class="metric-chart">
+                                    <canvas id="total_salesChart"></canvas>
+                                </div>
+                            </div>
+                            
+                            <!-- Orders Card -->
+                            <div class="metric-card">
+                                <h3>Orders</h3>
+                                <div class="metric-value">0</div>
+                                <div class="metric-change">0%</div>
+                                <div class="metric-chart">
+                                    <canvas id="ordersChart"></canvas>
+                                </div>
+                            </div>
+                            
+                            <!-- Conversion Rate Card -->
+                            <div class="metric-card">
+                                <h3>Conversion Rate</h3>
+                                <div class="metric-value">0%</div>
+                                <div class="metric-change">0%</div>
+                                <div class="metric-chart">
+                                    <canvas id="conversion_rateChart"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- New Email Marketing Widget -->
+                    <div class="email-marketing-widget">
+                        <div class="widget-header">
+                            <h2>Email Marketing</h2>
+                            <p class="subtitle">E-mails sent</p>
+                        </div>
+                        <div class="email-stats">
+                            <span class="sent-count">0000</span>
+                            <span class="separator">/</span>
+                            <span class="total-count">0000</span>
+                        </div>
+                        <form id="emailSuggestionForm" class="suggestion-form">
+                            <label for="suggestionInput">Suggest targeted audience:</label>
+                            <input type="text" id="suggestionInput" name="suggestion" required>
+                            <button type="submit">
+                                <i class="fas fa-paper-plane"></i>
+                                Send
+                            </button>
+                        </form>
+                        <p class="automation-status">Your email is being automated.</p>
+                    </div>
+
+                    <!-- Logo Preference Widget -->
+                    <div class="logo-preference-widget">
+                        <div class="widget-header">
+                            <h2>Logo Preferences</h2>
+                            <p class="subtitle">Choose your logo style</p>
+                        </div>
+                        <form id="logoPreferenceForm" class="config-form">
+                            <div class="form-group">
+                                <label for="logoType">Logo Type</label>
+                                <select id="logoType" name="logoType" required>
+                                    <option value="">Select a logo style...</option>
+                                    <option value="minimalist">Minimalist</option>
+                                    <option value="modern">Modern</option>
+                                    <option value="vintage">Vintage</option>
+                                    <option value="abstract">Abstract</option>
+                                    <option value="typography">Typography Based</option>
+                                    <option value="illustrative">Illustrative</option>
+                                </select>
+                            </div>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-paper-plane"></i>
+                                Submit Preference
+                            </button>
+                        </form>
+                    </div>
+
+                    <!-- Instagram Marketing Widget -->
+                    <div class="instagram-marketing-widget">
+                        <div class="widget-header">
+                            <h2>Instagram Marketing</h2>
+                            <p class="subtitle">Track your campaign performance</p>
+                        </div>
+                        <div class="instagram-metrics">
+                            <div class="metric-item">
+                                <span class="metric-value" id="accountsReached">0</span>
+                                <span class="metric-label">Accounts Reached</span>
+                            </div>
+                            <div class="metric-item">
+                                <span class="metric-value" id="leadsConverted">0</span>
+                                <span class="metric-label">Leads Converted</span>
+                            </div>
+                        </div>
+                        <form id="instagramPreferenceForm" class="config-form">
+                            <div class="form-group">
+                                <label for="instagramNiche">Preferred Niche</label>
+                                <select id="instagramNiche" name="instagramNiche" required>
+                                    <option value="">Select a niche...</option>
+                                    <option value="Fashion">Fashion</option>
+                                    <option value="Beauty">Beauty</option>
+                                    <option value="Fitness">Fitness</option>
+                                    <option value="Food">Food</option>
+                                    <option value="Travel">Travel</option>
+                                    <option value="Technology">Technology</option>
+                                    <option value="Business">Business</option>
+                                    <option value="Lifestyle">Lifestyle</option>
+                                    <option value="Education">Education</option>
+                                    <option value="Health">Health</option>
+                                </select>
+                            </div>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-paper-plane"></i>
+                                Submit Preference
+                            </button>
+                        </form>
+                    </div>
+
+                    <!-- Upcoming Meetings Widget -->
+                    <div class="upcoming-meetings-widget">
+                        <div class="widget-header">
+                            <h2>Upcoming Meetings <i class="fas fa-laptop"></i></h2>
+                            <p class="subtitle" id="meetingSubtitle">With our experts who will guide you in building a profitable business</p>
+                        </div>
+                        <div class="meeting-card">
+                            <div class="meeting-profile">
+                                <div class="profile-image">
+                                    <img id="meetingProfileImage" src="https://via.placeholder.com/80" alt="Expert profile">
+                                </div>
+                                <div class="meeting-details">
+                                    <h3 id="meetingHeading">Heading 3</h3>
+                                    <p id="meetingDescription">Add paragraph text. Click "Edit Text" to update the font, size and more. To change and reuse text themes, go to Site Styles.</p>
+                                </div>
+                            </div>
+                            <div class="meeting-footer">
+                                <div class="meeting-time" id="meetingTime">
+                                    Month, day, date, timing
+                                </div>
+                                <div class="meeting-action">
+                                    <a href="#" id="meetingLink" class="meeting-btn">
+                                        <i class="fas fa-chevron-right"></i>
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section id="userContent" class="user-content">
+                <!-- User-specific content will be loaded here -->
+            </section>
+        </main>
+    </div>
+
+    <!-- Lightbox for logo creation message -->
+    <div id="logoCreationLightbox" class="lightbox">
+        <div class="lightbox-content">
+            <h3>Your logo is being made</h3>
+            <p>Please check the user content panel for updates.</p>
+        </div>
+    </div>
+
+    <!-- Lightbox for Instagram suggestion confirmation -->
+    <div id="instagramConfirmationLightbox" class="lightbox">
+        <div class="lightbox-content">
+            <h3>Your suggestion has been received</h3>
+            <p>Our team will review your niche preference shortly.</p>
+        </div>
+    </div>
+
+    <script src="dashboard.js"></script>
+</body>
+</html> 

@@ -1,0 +1,55 @@
+{
+  "accountsReached": 2000,
+  "leadsConverted": 2,
+  "preferences": [
+    {
+      "niche": "Technology",
+      "timestamp": "2025-04-04T20:14:54.277Z"
+    },
+    {
+      "niche": "Food",
+      "timestamp": "2025-04-04T20:29:25.983Z"
+    },
+    {
+      "niche": "Fashion",
+      "timestamp": "2025-04-05T06:04:12.018Z"
+    },
+    {
+      "niche": "Business",
+      "timestamp": "2025-04-05T06:06:24.127Z"
+    },
+    {
+      "niche": "Fitness",
+      "timestamp": "2025-04-05T06:07:15.325Z"
+    },
+    {
+      "niche": "Beauty",
+      "timestamp": "2025-04-05T06:10:27.300Z"
+    },
+    {
+      "niche": "Lifestyle",
+      "timestamp": "2025-04-05T06:15:43.633Z"
+    },
+    {
+      "niche": "Food",
+      "timestamp": "2025-04-05T06:35:41.655Z"
+    },
+    {
+      "niche": "Fitness",
+      "timestamp": "2025-04-05T06:47:31.474Z"
+    },
+    {
+      "niche": "Health",
+      "timestamp": "2025-04-05T06:47:47.697Z"
+    },
+    {
+      "niche": "Travel",
+      "timestamp": "2025-04-05T07:06:29.513Z"
+    },
+    {
+      "niche": "Fashion",
+      "timestamp": "2025-04-05T07:30:21.324Z"
+    }
+  ],
+  "lastUpdated": "2025-04-05T07:31:09.924Z"
+}

@@ -1,0 +1,48 @@
+{
+  "nigga": [
+    {
+      "date": "2025-01-03",
+      "sessions": 0,
+      "sales": 0,
+      "orders": 0,
+      "conversion": 0
+    },
+    {
+      "date": "2025-04-03",
+      "sessions": 1,
+      "sales": 1,
+      "orders": 1,
+      "conversion": 100
+    },
+    {
+      "date": "2025-06-03",
+      "sessions": 50,
+      "sales": 200,
+      "orders": 2,
+      "conversion": 4
+    }
+  ],
+  "ayush": [
+    {
+      "date": "2025-01-03",
+      "sessions": 0,
+      "sales": 0,
+      "orders": 0,
+      "conversion": 0
+    },
+    {
+      "date": "2025-04-03",
+      "sessions": 244,
+      "sales": 0,
+      "orders": 23,
+      "conversion": 0
+    },
+    {
+      "date": "2025-06-03",
+      "sessions": 1200,
+      "sales": 23000,
+      "orders": 3,
+      "conversion": 0.5
+    }
+  ]
+}

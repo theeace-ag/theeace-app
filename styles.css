@@ -1,0 +1,354 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: -apple-system, BlinkMacSystemFont, 'Inter', sans-serif;
+}
+
+body {
+    min-height: 100vh;
+    background: linear-gradient(135deg, #ffffff 0%, #f0f0f0 100%);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    color: #2d3436;
+    position: relative;
+}
+
+.login-container {
+    width: 100%;
+    max-width: 400px;
+    padding: 20px;
+    position: relative;
+    z-index: 1;
+}
+
+.login-box {
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border-radius: 24px;
+    padding: 40px;
+    box-shadow: 
+        0 10px 30px rgba(0, 0, 0, 0.05),
+        0 1px 8px rgba(0, 0, 0, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.8);
+    animation: boxAppear 0.6s ease-out;
+}
+
+h2 {
+    font-size: 32px;
+    font-weight: 700;
+    margin-bottom: 8px;
+    color: #2d3436;
+    text-align: center;
+    letter-spacing: -0.5px;
+}
+
+.subtitle {
+    color: #636e72;
+    font-size: 14px;
+    margin-bottom: 32px;
+    text-align: center;
+    letter-spacing: 0.3px;
+}
+
+.form-group {
+    position: relative;
+    margin-bottom: 24px;
+    animation: slideUp 0.5s ease-out backwards;
+}
+
+.form-group:nth-child(2) {
+    animation-delay: 0.1s;
+}
+
+.form-group:nth-child(3) {
+    animation-delay: 0.2s;
+}
+
+.form-group input {
+    width: 100%;
+    padding: 16px;
+    background: #f8f9fa;
+    border: 1px solid #e9ecef;
+    border-radius: 12px;
+    color: #2d3436;
+    font-size: 15px;
+    transition: all 0.3s ease;
+}
+
+.form-group input:focus {
+    outline: none;
+    border-color: #007AFF;
+    background: #ffffff;
+    box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.1);
+}
+
+.form-group label {
+    position: absolute;
+    top: 50%;
+    left: 16px;
+    transform: translateY(-50%);
+    color: #636e72;
+    pointer-events: none;
+    transition: all 0.3s ease;
+    font-size: 15px;
+}
+
+.form-group input:focus ~ label,
+.form-group input:valid ~ label {
+    top: 0;
+    left: 12px;
+    font-size: 12px;
+    padding: 0 4px;
+    background: #ffffff;
+    color: #007AFF;
+}
+
+.show-password {
+    position: absolute;
+    right: 16px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    color: #636e72;
+    font-size: 13px;
+    cursor: pointer;
+    transition: 0.3s;
+    padding: 4px 8px;
+    border-radius: 4px;
+}
+
+.show-password:hover {
+    color: #007AFF;
+    background: rgba(0, 122, 255, 0.05);
+}
+
+.forgot-password {
+    text-align: right;
+    margin-bottom: 24px;
+}
+
+.forgot-password a {
+    color: #007AFF;
+    text-decoration: none;
+    font-size: 14px;
+    transition: 0.3s;
+}
+
+.forgot-password a:hover {
+    color: #0056b3;
+    text-decoration: underline;
+}
+
+.sign-in-btn {
+    width: 100%;
+    padding: 16px;
+    background: #007AFF;
+    color: white;
+    border: none;
+    border-radius: 12px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+    animation: slideUp 0.5s ease-out 0.3s backwards;
+}
+
+.sign-in-btn:hover {
+    transform: translateY(-2px);
+    background: #0056b3;
+    box-shadow: 0 4px 12px rgba(0, 122, 255, 0.2);
+}
+
+.sign-in-btn:active {
+    transform: translateY(0);
+    background: #004494;
+}
+
+.divider {
+    text-align: center;
+    margin: 24px 0;
+    position: relative;
+}
+
+.divider::before,
+.divider::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    width: calc(50% - 30px);
+    height: 1px;
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.divider::before {
+    left: 0;
+}
+
+.divider::after {
+    right: 0;
+}
+
+.divider span {
+    background: #171717;
+    padding: 0 16px;
+    color: rgba(255, 255, 255, 0.4);
+    font-size: 14px;
+}
+
+.apple-sign-in {
+    width: 100%;
+    padding: 12px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    color: #fff;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: 0.3s;
+}
+
+.apple-sign-in:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.apple-sign-in img {
+    width: 20px;
+    height: 20px;
+}
+
+.signup-link {
+    text-align: center;
+    margin-top: 24px;
+    color: #636e72;
+    font-size: 14px;
+}
+
+.signup-link a {
+    color: #007AFF;
+    text-decoration: none;
+    font-weight: 500;
+    transition: 0.3s;
+}
+
+.signup-link a:hover {
+    color: #0056b3;
+    text-decoration: underline;
+}
+
+.logout-link {
+    text-align: center;
+    margin-top: 16px;
+    font-size: 13px;
+}
+
+.logout-link a {
+    color: #636e72;
+    text-decoration: none;
+    transition: 0.3s;
+}
+
+.logout-link a:hover {
+    color: #d63031;
+    text-decoration: underline;
+}
+
+.error-message {
+    color: #d63031;
+    text-align: center;
+    margin-top: 16px;
+    font-size: 14px;
+    animation: shake 0.5s ease-in-out;
+}
+
+.loader {
+    display: none;
+    width: 20px;
+    height: 20px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-top: 2px solid #ffffff;
+    border-radius: 50%;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: translate(-50%, -50%) rotate(0deg); }
+    100% { transform: translate(-50%, -50%) rotate(360deg); }
+}
+
+.sign-in-btn.loading .btn-text {
+    visibility: hidden;
+}
+
+.sign-in-btn.loading .loader {
+    display: block;
+}
+
+@keyframes boxAppear {
+    0% {
+        transform: translateY(20px);
+        opacity: 0;
+    }
+    100% {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+@keyframes slideUp {
+    0% {
+        transform: translateY(20px);
+        opacity: 0;
+    }
+    100% {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+@keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-5px); }
+    75% { transform: translateX(5px); }
+}
+
+/* Mobile Optimization */
+@media (max-width: 480px) {
+    .login-box {
+        padding: 32px 24px;
+        margin: 20px;
+        border-radius: 20px;
+    }
+
+    h2 {
+        font-size: 28px;
+    }
+
+    .subtitle {
+        font-size: 13px;
+        margin-bottom: 24px;
+    }
+
+    .form-group {
+        margin-bottom: 20px;
+    }
+
+    .form-group input {
+        padding: 14px;
+        font-size: 14px;
+    }
+} 

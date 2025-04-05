@@ -1,0 +1,51 @@
+{
+  "ayush": {
+    "sessions": {
+      "value": 1200,
+      "change": 391.8032786885246,
+      "lastUpdated": "2025-04-03T09:31:48.036Z"
+    },
+    "total_sales": {
+      "value": 23000,
+      "change": null,
+      "lastUpdated": "2025-04-03T09:31:48.050Z"
+    },
+    "conversion_rate": {
+      "value": 0.5,
+      "change": 0.5,
+      "lastUpdated": "2025-04-03T09:31:48.068Z"
+    },
+    "orders": {
+      "value": 3,
+      "change": -86.95652173913044,
+      "lastUpdated": "2025-04-03T09:31:48.060Z"
+    },
+    "email_stats": {
+      "sent": 0,
+      "total": 0,
+      "lastUpdated": "2025-04-05T06:43:21.709Z"
+    }
+  },
+  "nigga": {
+    "sessions": {
+      "value": 50,
+      "change": 4900,
+      "lastUpdated": "2025-04-03T09:11:31.880Z"
+    },
+    "total_sales": {
+      "value": 200,
+      "change": 19900,
+      "lastUpdated": "2025-04-03T09:11:31.888Z"
+    },
+    "orders": {
+      "value": 2,
+      "change": 100,
+      "lastUpdated": "2025-04-03T09:11:31.894Z"
+    },
+    "conversion_rate": {
+      "value": 4,
+      "change": -96,
+      "lastUpdated": "2025-04-03T09:11:31.902Z"
+    }
+  }
+}

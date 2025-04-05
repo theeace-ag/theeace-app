@@ -1,0 +1,606 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manage User Content</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 15px;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .header h1 {
+            font-size: 1.5rem;
+        }
+
+        .back-btn {
+            padding: 8px 16px;
+            background-color: #333;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+
+        .content-section {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+            overflow-x: auto;
+        }
+
+        .spreadsheet-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+            min-width: 600px;
+        }
+
+        .spreadsheet-table th,
+        .spreadsheet-table td {
+            border: 1px solid #e0e0e0;
+            padding: 12px;
+            text-align: left;
+            min-width: 100px;
+        }
+
+        .spreadsheet-table th {
+            background-color: #f5f5f5;
+            font-weight: 500;
+            white-space: nowrap;
+        }
+
+        .spreadsheet-table tr:nth-child(even) {
+            background-color: #fafafa;
+        }
+
+        .spreadsheet-table tr:hover {
+            background-color: #f0f7ff;
+        }
+
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 500;
+            margin-right: 8px;
+            white-space: nowrap;
+        }
+
+        .btn-primary {
+            background-color: #007bff;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background-color: #0056b3;
+        }
+
+        .btn-danger {
+            background-color: #dc3545;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background-color: #c82333;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 500;
+        }
+
+        input, select {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            margin-bottom: 10px;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 0 10px;
+            }
+
+            .header {
+                flex-direction: column;
+                text-align: center;
+            }
+
+            .content-section {
+                padding: 15px;
+                margin: 0 -10px 20px -10px;
+                border-radius: 0;
+            }
+
+            .btn {
+                width: 100%;
+                margin: 5px 0;
+            }
+
+            .spreadsheet-table td[contenteditable="true"] {
+                min-width: 120px;
+            }
+        }
+
+        /* Success/Error messages */
+        .message {
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+            text-align: center;
+        }
+
+        .success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .website-config-section {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+
+        .state-control {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 60px;
+            height: 34px;
+        }
+
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            -webkit-transition: .4s;
+            transition: .4s;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 26px;
+            width: 26px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            -webkit-transition: .4s;
+            transition: .4s;
+        }
+
+        input:checked + .slider {
+            background-color: #2196F3;
+        }
+
+        input:focus + .slider {
+            box-shadow: 0 0 1px #2196F3;
+        }
+
+        input:checked + .slider:before {
+            -webkit-transform: translateX(26px);
+            -ms-transform: translateX(26px);
+            transform: translateX(26px);
+        }
+
+        .slider.round {
+            border-radius: 34px;
+        }
+
+        .slider.round:before {
+            border-radius: 50%;
+        }
+
+        .state-section {
+            flex: 1;
+        }
+
+        .preview-section {
+            padding: 1rem;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            margin-top: 1rem;
+        }
+
+        .preview-upload {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .preview-controls {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .website-url {
+            margin-top: 1rem;
+        }
+
+        #previewImage {
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 0.5rem;
+        }
+
+        .website-url-section {
+            margin-top: 2rem;
+            padding: 1rem;
+            background-color: #f8f9fa;
+            border-radius: 8px;
+        }
+
+        .website-url input {
+            flex: 1;
+            padding: 0.5rem;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 1rem;
+        }
+
+        .website-url button {
+            white-space: nowrap;
+        }
+
+        .state-section {
+            background-color: white;
+            padding: 2rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-top: 1rem;
+        }
+
+        .submissions-section {
+            margin-top: 20px;
+        }
+
+        .table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .table th,
+        .table td {
+            border: 1px solid #e0e0e0;
+            padding: 12px;
+            text-align: left;
+            min-width: 100px;
+        }
+
+        .table th {
+            background-color: #f5f5f5;
+            font-weight: 500;
+            white-space: nowrap;
+        }
+
+        .table tr:nth-child(even) {
+            background-color: #fafafa;
+        }
+
+        .table tr:hover {
+            background-color: #f0f7ff;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Manage User Content</h1>
+            <button class="back-btn" onclick="window.location.href='admin.html'">Back to Admin</button>
+        </div>
+
+        <div class="content-section">
+            <h2>User Analytics</h2>
+            <div class="form-group">
+                <label for="userSelect">Select User</label>
+                <select id="userSelect">
+                    <option value="">Select a user...</option>
+                </select>
+            </div>
+            <table class="spreadsheet-table">
+                <thead>
+                    <tr>
+                        <th>Metric</th>
+                        <th>Value</th>
+                        <th>Change</th>
+                        <th>Last Updated</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="metricsTable">
+                    <tr>
+                        <td>Sessions</td>
+                        <td contenteditable="true">0</td>
+                        <td contenteditable="true">0%</td>
+                        <td>-</td>
+                        <td>
+                            <button class="btn btn-primary" onclick="updateMetric(this)">Save</button>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>Total Sales</td>
+                        <td contenteditable="true">₹0</td>
+                        <td contenteditable="true">0%</td>
+                        <td>-</td>
+                        <td>
+                            <button class="btn btn-primary" onclick="updateMetric(this)">Save</button>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>Orders</td>
+                        <td contenteditable="true">0</td>
+                        <td contenteditable="true">0%</td>
+                        <td>-</td>
+                        <td>
+                            <button class="btn btn-primary" onclick="updateMetric(this)">Save</button>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>Conversion Rate</td>
+                        <td contenteditable="true">0%</td>
+                        <td contenteditable="true">0%</td>
+                        <td>-</td>
+                        <td>
+                            <button class="btn btn-primary" onclick="updateMetric(this)">Save</button>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="content-section">
+            <h2>Historical Data</h2>
+            <table class="spreadsheet-table">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Sessions</th>
+                        <th>Sales</th>
+                        <th>Orders</th>
+                        <th>Conversion</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="historicalData">
+                    <!-- Data will be populated dynamically -->
+                </tbody>
+            </table>
+            <button class="btn btn-primary" onclick="addHistoricalRow()" style="margin-top: 10px;">Add Row</button>
+        </div>
+
+        <!-- New Email Marketing Section -->
+        <div class="content-section">
+            <h2>Email Marketing Stats</h2>
+            <table class="spreadsheet-table">
+                <thead>
+                    <tr>
+                        <th>Metric</th>
+                        <th>Value</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="emailStats">
+                    <tr>
+                        <td>Sent Emails</td>
+                        <td contenteditable="true" id="sentEmails">0000</td>
+                        <td rowspan="2">
+                            <button class="btn btn-primary" onclick="updateEmailStats()">Save</button>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>Total Emails</td>
+                        <td contenteditable="true" id="totalEmails">0000</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Email Marketing Suggestions Section -->
+        <div class="content-section">
+            <h2>Email Marketing Suggestions</h2>
+            <table class="spreadsheet-table">
+                <thead>
+                    <tr>
+                        <th>User</th>
+                        <th>Suggestion</th>
+                        <th>Timestamp</th>
+                    </tr>
+                </thead>
+                <tbody id="emailSuggestions">
+                    <!-- Suggestions will be populated dynamically -->
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Website Configuration Section -->
+        <div class="website-config">
+            <div class="state-toggle">
+                <label class="switch">
+                    <input type="checkbox" id="stateToggle">
+                    <span class="slider round"></span>
+                </label>
+                <span id="stateText">Configuration</span>
+            </div>
+
+            <!-- State 1: Configuration Form -->
+            <div id="state1Form" class="state-section">
+                <form id="websiteConfigForm">
+                    <div class="form-group">
+                        <label for="brandName">Brand Name</label>
+                        <input type="text" id="brandName" name="brandName" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="websiteType">Website Type</label>
+                        <select id="websiteType" name="websiteType" required>
+                            <option value="">Select type...</option>
+                            <option value="ecommerce">E-commerce</option>
+                            <option value="portfolio">Portfolio</option>
+                            <option value="business">Business</option>
+                            <option value="blog">Blog</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Color Scheme</label>
+                        <div class="color-inputs">
+                            <input type="color" id="primaryColor" name="primaryColor" value="#000000">
+                            <input type="color" id="secondaryColor" name="secondaryColor" value="#ffffff">
+                            <input type="color" id="tertiaryColor" name="tertiaryColor" value="#cccccc">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="referenceWebsite">Reference Website URL</label>
+                        <input type="url" id="referenceWebsite" name="referenceWebsite">
+                    </div>
+                    <button type="submit" class="btn btn-primary">Submit Configuration</button>
+                </form>
+            </div>
+
+            <!-- State 2: Preview Section -->
+            <div id="state2Preview" class="state-section" style="display: none;">
+                <div class="preview-section">
+                    <div class="website-preview-container">
+                        <img id="previewImage" src="" alt="Website Preview" style="max-width: 100%; margin-bottom: 1rem;">
+                        <div class="form-group">
+                            <label for="websitePreviewUrl">Website Preview Image URL</label>
+                            <input type="url" id="websitePreviewUrl" class="form-control" placeholder="Enter website preview image URL">
+                            <small style="display: block; margin-top: 5px; color: #777;">Use a direct image URL or leave empty for default</small>
+                        </div>
+                    </div>
+                    <div class="website-url">
+                        <div class="form-group">
+                            <label for="websiteUrl">Website URL</label>
+                            <input type="url" id="websiteUrl" class="form-control" placeholder="Enter website URL">
+                            <button type="button" id="saveWebsiteDetails" class="btn btn-primary" style="margin-top: 10px;">Save Website Details</button>
+                        </div>
+                    </div>
+                    
+                    <!-- Website Query Form -->
+                    <div class="website-query-form" style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #eee;">
+                        <h4>Request Changes</h4>
+                        <form id="websiteQueryForm">
+                            <div class="form-group">
+                                <label for="websiteQueryInput">Describe the changes you want</label>
+                                <textarea id="websiteQueryInput" class="form-control" rows="3" placeholder="Please describe any changes you would like to see"></textarea>
+                            </div>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-paper-plane"></i> Submit Changes
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Submissions Table -->
+        <div class="submissions-section">
+            <h3>Configuration Submissions</h3>
+            <table class="table" id="submissionsTable">
+                <thead>
+                    <tr>
+                        <th>Date/Time</th>
+                        <th>Brand Name</th>
+                        <th>Website Type</th>
+                        <th>Color Scheme</th>
+                        <th>Reference Website</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+
+        <!-- Logo Notes Table -->
+        <div class="content-section">
+            <h2>Logo Change Requests</h2>
+            <table class="table" id="logoNotesTable">
+                <thead>
+                    <tr>
+                        <th>Date/Time</th>
+                        <th>Changes Requested</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+
+        <!-- Website Queries Section -->
+        <div class="content-section">
+            <h2>Website Queries</h2>
+            <table class="spreadsheet-table">
+                <thead>
+                    <tr>
+                        <th>Timestamp</th>
+                        <th>Changes Requested</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody id="websiteQueries">
+                    <!-- Queries will be populated dynamically -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script src="userContent.js"></script>
+    <script src="instagramMarketing.js"></script>
+    <script src="upcomingMeetings.js"></script>
+</body>
+</html> 

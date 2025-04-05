@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>THEEACE Admin Portal</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        body {
+            min-height: 100vh;
+            margin: 0;
+            padding: 0;
+            overflow-x: hidden;
+            position: relative;
+        }
+
+        .space-background {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+        }
+        
+        .admin-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            position: relative;
+            z-index: 1;
+            min-height: 100vh;
+            box-sizing: border-box;
+        }
+        
+        .admin-box {
+            background: rgba(23, 23, 23, 0.8);
+            backdrop-filter: blur(20px);
+            border-radius: 24px;
+            padding: 40px;
+            margin-bottom: 20px;
+            overflow: hidden;
+        }
+        
+        .user-form {
+            display: grid;
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .user-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            color: white;
+            overflow-x: auto;
+            display: block;
+            max-width: 100%;
+        }
+        
+        .user-table th, .user-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            min-width: 120px;
+        }
+        
+        .file-upload {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        
+        .file-input {
+            display: none;
+        }
+        
+        .file-label {
+            padding: 12px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px dashed rgba(255, 255, 255, 0.2);
+            border-radius: 12px;
+            cursor: pointer;
+            text-align: center;
+            transition: all 0.3s;
+            word-wrap: break-word;
+        }
+        
+        .file-label:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+        
+        .success-message {
+            color: #4CAF50;
+            margin-top: 10px;
+            word-wrap: break-word;
+        }
+        
+        .error-message {
+            color: #f44336;
+            margin-top: 10px;
+            word-wrap: break-word;
+        }
+
+        pre {
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            overflow-x: auto;
+            max-width: 100%;
+            background: rgba(255,255,255,0.1);
+            padding: 10px;
+            border-radius: 8px;
+        }
+
+        @media (max-width: 768px) {
+            .admin-container {
+                padding: 10px;
+            }
+            
+            .admin-box {
+                padding: 20px;
+                margin-bottom: 15px;
+            }
+            
+            .user-table {
+                font-size: 14px;
+            }
+            
+            .user-table th, .user-table td {
+                padding: 8px;
+                min-width: 100px;
+            }
+
+            pre {
+                font-size: 12px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .admin-box {
+                padding: 15px;
+                margin-bottom: 10px;
+            }
+            
+            .user-table th, .user-table td {
+                padding: 6px;
+                min-width: 80px;
+                font-size: 12px;
+            }
+        }
+
+        /* Table wrapper for horizontal scrolling */
+        .table-wrapper {
+            overflow-x: auto;
+            margin-top: 20px;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        /* Make form inputs more responsive */
+        .form-group {
+            width: 100%;
+            max-width: 100%;
+        }
+
+        .form-group input {
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        /* Ensure buttons don't overflow */
+        .sign-in-btn {
+            width: 100%;
+            max-width: 100%;
+            box-sizing: border-box;
+        }
+    </style>
+</head>
+<body>
+    <div class="space-background">
+        <div class="planet"></div>
+        <div class="stars"></div>
+        <div class="nebula"></div>
+    </div>
+    
+    <div class="admin-container">
+        <!-- Single User Addition -->
+        <div class="admin-box">
+            <h2>Add New User</h2>
+            <p class="subtitle">Create a single user account</p>
+            
+            <form id="addUserForm" class="user-form">
+                <div class="form-group">
+                    <input type="text" id="newUsername" required>
+                    <label>Username</label>
+                </div>
+                
+                <div class="form-group">
+                    <input type="text" id="newUserId" required>
+                    <label>User ID</label>
+                </div>
+                
+                <div class="form-group">
+                    <input type="password" id="newPasskey" required>
+                    <label>Password</label>
+                </div>
+                
+                <button type="submit" class="sign-in-btn">
+                    <span class="btn-text">Add User</span>
+                    <div class="loader"></div>
+                </button>
+            </form>
+            <div id="singleUserMessage"></div>
+        </div>
+        
+        <!-- Bulk Import -->
+        <div class="admin-box">
+            <h2>Bulk Import Users</h2>
+            <p class="subtitle">Import multiple users via CSV file</p>
+            
+            <div class="file-upload">
+                <input type="file" id="csvFile" accept=".csv" class="file-input">
+                <label for="csvFile" class="file-label">
+                    Choose CSV file or drag & drop here
+                </label>
+                <button class="sign-in-btn" onclick="uploadCSV()">
+                    <span class="btn-text">Upload CSV</span>
+                    <div class="loader"></div>
+                </button>
+            </div>
+            <div id="bulkImportMessage"></div>
+            
+            <div style="margin-top: 20px;">
+                <h3 style="color: #fff; margin-bottom: 10px;">CSV Format:</h3>
+                <pre>username,userId,passkey
+user1,12345,password1
+user2,67890,password2</pre>
+            </div>
+        </div>
+        
+        <!-- User List -->
+        <div class="admin-box">
+            <h2>Existing Users</h2>
+            <p class="subtitle">View all registered users</p>
+            
+            <div class="table-wrapper">
+                <table class="user-table">
+                    <thead>
+                        <tr>
+                            <th>Username</th>
+                            <th>User ID</th>
+                            <th>Created At</th>
+                            <th>Last Login</th>
+                        </tr>
+                    </thead>
+                    <tbody id="userList">
+                        <!-- Users will be loaded here -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    
+    <script src="admin.js"></script>
+</body>
+</html> 
