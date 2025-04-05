@@ -524,26 +524,64 @@ app.post('/api/users/bulk-import', upload.single('csv'), (req, res) => {
 // Login endpoint
 app.post('/api/login', (req, res) => {
     try {
-        const { username, userId, passkey } = req.body;
-        const users = readUsers();
+        console.log('[DEBUG] POST /api/login - Login attempt');
+        const { username, password } = req.body;
         
-        const user = users.find(u => 
-            u.username === username && 
-            u.userId === userId && 
-            u.passkey === passkey
-        );
-        
-        if (!user) {
-            return res.status(401).json({ message: 'Invalid credentials' });
+        // Validate request
+        if (!username || !password) {
+            console.log('[DEBUG] Login failed: Missing username or password');
+            return res.status(400).json({ error: 'Username and password are required' });
         }
         
-        // Update last login
+        console.log(`[DEBUG] Login attempt for username: ${username}`);
+        
+        // Get all users
+        const users = readUsers();
+        console.log(`[DEBUG] Found ${users.length} users in database`);
+        
+        // Find user by username
+        const user = users.find(u => u.username === username);
+        if (!user) {
+            console.log(`[DEBUG] Login failed: User '${username}' not found`);
+            return res.status(401).json({ error: 'Invalid credentials' });
+        }
+        
+        // Check password
+        // Note: In a production environment, you should use a proper password hashing library
+        if (user.password !== password) {
+            console.log(`[DEBUG] Login failed: Incorrect password for user '${username}'`);
+            return res.status(401).json({ error: 'Invalid credentials' });
+        }
+        
+        // Login successful
+        console.log(`[DEBUG] Login successful for username: ${username}`);
+        
+        // Update last login timestamp (optional)
         user.lastLogin = new Date().toISOString();
         writeUsers(users);
         
-        res.json({ message: 'Login successful', user });
+        // Create a sanitized user object (without password)
+        const sanitizedUser = {
+            id: user.id || user.userId, // Support both formats
+            username: user.username,
+            email: user.email || '',
+            lastLogin: user.lastLogin,
+            createdAt: user.createdAt
+        };
+        
+        // Return successful response with user data
+        res.json({ 
+            success: true, 
+            message: 'Login successful',
+            user: sanitizedUser
+        });
+        
     } catch (error) {
-        res.status(500).json({ message: 'Error during login' });
+        console.error('[DEBUG] Error in login endpoint:', error);
+        res.status(500).json({ 
+            error: 'Server error during login',
+            message: error.message
+        });
     }
 });
 
