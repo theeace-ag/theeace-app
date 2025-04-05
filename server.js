@@ -20,12 +20,16 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(express.static(path.join(__dirname, '.')));
 
+// Update all file paths to work with both local and Glitch environments
+const isGlitch = process.env.PROJECT_DOMAIN !== undefined;
+const dataDir = isGlitch ? path.join(__dirname, '.data') : path.join(__dirname, 'data');
+
 // Define file paths
-const usersFilePath = path.join(__dirname, 'users.json');
-const widgetsFilePath = path.join(__dirname, 'widgets.json');
-const contentFilePath = path.join(__dirname, 'content.json');
-const metricsFilePath = path.join(__dirname, 'metrics.json');
-const historicalFilePath = path.join(__dirname, 'historical.json');
+const usersFilePath = path.join(dataDir, 'users.json');
+const widgetsFilePath = path.join(dataDir, 'widgets.json');
+const contentFilePath = path.join(dataDir, 'content.json');
+const metricsFilePath = path.join(dataDir, 'metrics.json');
+const historicalFilePath = path.join(dataDir, 'historical.json');
 
 // Middleware
 app.use(express.static(path.join(__dirname, '.')));
@@ -33,10 +37,9 @@ app.use(express.static(path.join(__dirname, '.')));
 // Create necessary directories if they don't exist
 const dirs = [
     path.join(__dirname, 'uploads'),
-    path.join(__dirname, 'data'),
-    path.join(__dirname, 'data', 'email-stats'),
-    path.join(__dirname, 'data', 'metrics'),
-    path.join(__dirname, 'data', 'historical')
+    path.join(dataDir, 'email-stats'),
+    path.join(dataDir, 'metrics'),
+    path.join(dataDir, 'historical')
 ];
 
 dirs.forEach(dir => {
@@ -56,7 +59,7 @@ const dataFiles = {
 };
 
 Object.entries(dataFiles).forEach(([file, defaultContent]) => {
-    const filePath = path.join(__dirname, file);
+    const filePath = path.join(dataDir, file);
     if (!fs.existsSync(filePath)) {
         fs.writeFileSync(filePath, JSON.stringify(defaultContent, null, 2));
     }
@@ -81,107 +84,75 @@ let websiteQueries = {};
 let meetings = {}; // Storage for upcoming meetings data
 let instagramData = {};
 
-// Helper function to read users
+// Helper function to read users with better error handling
 function readUsers() {
     try {
-        // Check if this is running on Render
-        const isRender = process.env.RENDER === 'true' || process.env.RENDER_EXTERNAL_URL;
-        
-        // Default admin user for when filesystem fails (especially on Render)
-        const defaultUsers = [
-            {
-                userId: 'admin1',
-                username: 'admin',
-                password: 'password',
-                isAdmin: true,
-                created: new Date().toISOString()
-            },
-            {
-                userId: 'user1',
-                username: 'user',
-                password: 'password',
-                isAdmin: false,
-                created: new Date().toISOString()
-            },
-            {
-                userId: 'gupta',
-                username: 'Gupta',
-                password: 'password',
-                isAdmin: false,
-                created: new Date().toISOString()
-            }
-        ];
-        
-        if (isRender) {
-            console.log('Running on Render, using default users');
-            return defaultUsers;
-        }
-        
+        console.log(`Reading users from: ${usersFilePath}`);
         if (!fs.existsSync(usersFilePath)) {
-            console.log('Users file does not exist, creating default');
-            writeUsers(defaultUsers);
-            return defaultUsers;
+            console.log('Users file does not exist, creating empty file');
+            writeUsers([]);
+            return [];
         }
         
         const data = fs.readFileSync(usersFilePath, 'utf8');
-        const users = JSON.parse(data);
+        console.log(`Users data read: ${data}`);
         
-        if (!users || users.length === 0) {
-            console.log('No users found in file, using defaults');
-            return defaultUsers;
+        if (!data || data.trim() === '') {
+            console.log('Users file is empty, returning empty array');
+            return [];
         }
         
+        const users = JSON.parse(data);
+        console.log(`Parsed ${users.length} users`);
         return users;
     } catch (error) {
-        console.error('Error reading users file:', error);
-        // Return default users if there's an error
-        return [
-            {
-                userId: 'admin1',
-                username: 'admin',
-                password: 'password',
-                isAdmin: true,
-                created: new Date().toISOString()
-            },
-            {
-                userId: 'user1',
-                username: 'user',
-                password: 'password',
-                isAdmin: false,
-                created: new Date().toISOString()
-            },
-            {
-                userId: 'gupta',
-                username: 'Gupta',
-                password: 'password',
-                isAdmin: false,
-                created: new Date().toISOString()
+        console.error('Error reading users:', error);
+        // If there's a JSON parse error, the file might be corrupted
+        if (error instanceof SyntaxError) {
+            console.log('Users file appears to be corrupted, creating a backup and new file');
+            try {
+                // Create a backup of the corrupted file
+                if (fs.existsSync(usersFilePath)) {
+                    const backupPath = `${usersFilePath}.bak.${Date.now()}`;
+                    fs.copyFileSync(usersFilePath, backupPath);
+                    console.log(`Backup created at ${backupPath}`);
+                    
+                    // Create a new empty users file
+                    writeUsers([]);
+                }
+            } catch (backupError) {
+                console.error('Error creating backup:', backupError);
             }
-        ];
+        }
+        return [];
     }
 }
 
-// Helper function to write users
+// Helper function to write users with better error handling
 function writeUsers(users) {
     try {
-        // Check if this is running on Render
-        const isRender = process.env.RENDER === 'true' || process.env.RENDER_EXTERNAL_URL;
-        
-        // On Render, just log that we're trying to save but not expecting persistence
-        if (isRender) {
-            console.log('Running on Render, not expecting user data to persist');
-        }
-        
-        // Create the directory if it doesn't exist
+        console.log(`Writing ${users.length} users to ${usersFilePath}`);
+        // Ensure the directory exists
         const dir = path.dirname(usersFilePath);
         if (!fs.existsSync(dir)) {
+            console.log(`Creating directory: ${dir}`);
             fs.mkdirSync(dir, { recursive: true });
         }
         
-        fs.writeFileSync(usersFilePath, JSON.stringify(users, null, 2));
-        console.log('Users file written successfully');
+        const data = JSON.stringify(users, null, 2);
+        fs.writeFileSync(usersFilePath, data, 'utf8');
+        console.log('Users written successfully');
+        
+        // Verify the file was written correctly
+        if (fs.existsSync(usersFilePath)) {
+            const stat = fs.statSync(usersFilePath);
+            console.log(`File size: ${stat.size} bytes`);
+        }
+        
+        return true;
     } catch (error) {
-        console.error('Error writing users file:', error);
+        console.error('Error writing users:', error);
+        throw error;
     }
 }
 
@@ -305,10 +276,10 @@ app.get('/api/users', (req, res) => {
     }
 });
 
-// Add single user
+// Add single user with enhanced debugging
 app.post('/api/users', (req, res) => {
     try {
-        console.log('Received user data:', req.body);
+        console.log('Received user data:', JSON.stringify(req.body));
         const { username, userId, passkey } = req.body;
         
         // Validate input
@@ -317,7 +288,9 @@ app.post('/api/users', (req, res) => {
             return res.status(400).json({ message: 'All fields are required' });
         }
         
+        console.log('Reading existing users');
         const users = readUsers();
+        console.log(`Found ${users.length} existing users`);
         
         // Check if user already exists
         if (users.some(u => u.username === username || u.userId === userId)) {
@@ -334,14 +307,47 @@ app.post('/api/users', (req, res) => {
             lastLogin: null
         };
         
+        console.log('Adding new user:', newUser);
         users.push(newUser);
+        
+        console.log('Writing updated users list');
         writeUsers(users);
         console.log('User added successfully:', username);
+        
+        // Create default stats and metrics for the new user
+        try {
+            // Create email stats
+            const emailStatsDir = path.join(dataDir, 'email-stats');
+            const statsFilePath = path.join(emailStatsDir, `${userId}.json`);
+            if (!fs.existsSync(emailStatsDir)) {
+                fs.mkdirSync(emailStatsDir, { recursive: true });
+            }
+            if (!fs.existsSync(statsFilePath)) {
+                const defaultStats = { sent: 0, total: 0, lastUpdated: new Date().toISOString() };
+                fs.writeFileSync(statsFilePath, JSON.stringify(defaultStats, null, 2));
+                console.log(`Created default email stats for user ${userId}`);
+            }
+            
+            // Create metrics
+            const metricsDir = path.join(dataDir, 'metrics');
+            const metricsFilePath = path.join(metricsDir, `${userId}.json`);
+            if (!fs.existsSync(metricsDir)) {
+                fs.mkdirSync(metricsDir, { recursive: true });
+            }
+            if (!fs.existsSync(metricsFilePath)) {
+                const defaultMetrics = { leads: 0, revenue: 0, customers: 0, lastUpdated: new Date().toISOString() };
+                fs.writeFileSync(metricsFilePath, JSON.stringify(defaultMetrics, null, 2));
+                console.log(`Created default metrics for user ${userId}`);
+            }
+        } catch (initError) {
+            console.error('Error creating user data files:', initError);
+            // We'll still return success since the user was created, but log the error
+        }
         
         res.status(201).json(newUser);
     } catch (error) {
         console.error('Error adding user:', error);
-        res.status(500).json({ message: 'Error adding user' });
+        res.status(500).json({ message: 'Error adding user', error: error.message });
     }
 });
 
@@ -580,7 +586,7 @@ app.post('/api/dashboard/content/:userId', (req, res) => {
 app.get('/api/dashboard/metrics/:userId', async (req, res) => {
     try {
         const { userId } = req.params;
-        const metricsPath = path.join(__dirname, 'data', 'metrics', `${userId}.json`);
+        const metricsPath = path.join(dataDir, 'metrics', `${userId}.json`);
         
         if (!fs.existsSync(metricsPath)) {
             // Initialize with default metrics if file doesn't exist
@@ -612,7 +618,7 @@ app.post('/api/dashboard/metrics/:userId', async (req, res) => {
             return res.status(400).json({ error: 'Missing required fields' });
         }
         
-        const metricsPath = path.join(__dirname, 'data', 'metrics', `${userId}.json`);
+        const metricsPath = path.join(dataDir, 'metrics', `${userId}.json`);
         let metrics = {};
         
         if (fs.existsSync(metricsPath)) {
@@ -637,7 +643,7 @@ app.post('/api/dashboard/metrics/:userId', async (req, res) => {
 app.get('/api/dashboard/historical/:userId', async (req, res) => {
     try {
         const userId = req.params.userId;
-        const historicalDataPath = path.join(__dirname, 'data', 'historical', `${userId}.json`);
+        const historicalDataPath = path.join(dataDir, 'historical', `${userId}.json`);
         
         if (!fs.existsSync(historicalDataPath)) {
             // If no historical data exists, return empty array
@@ -663,7 +669,7 @@ app.post('/api/dashboard/historical/:userId', async (req, res) => {
             return res.status(400).json({ error: 'Missing required fields' });
         }
         
-        const historicalPath = path.join(__dirname, 'data', 'historical', `${userId}.json`);
+        const historicalPath = path.join(dataDir, 'historical', `${userId}.json`);
         let historical = [];
         
         if (fs.existsSync(historicalPath)) {
@@ -697,7 +703,7 @@ app.post('/api/dashboard/historical/:userId', async (req, res) => {
 app.delete('/api/dashboard/historical/:userId/:date', async (req, res) => {
     try {
         const { userId, date } = req.params;
-        const historicalPath = path.join(__dirname, 'data', 'historical', `${userId}.json`);
+        const historicalPath = path.join(dataDir, 'historical', `${userId}.json`);
         
         if (!fs.existsSync(historicalPath)) {
             return res.status(404).json({ error: 'No historical data found' });
@@ -720,7 +726,7 @@ app.delete('/api/dashboard/historical/:userId/:date', async (req, res) => {
 app.get('/api/email-marketing/suggestions', async (req, res) => {
     try {
         const userId = req.query.userId;
-        const suggestionsPath = path.join(__dirname, 'data', 'email-suggestions.json');
+        const suggestionsPath = path.join(dataDir, 'email-suggestions.json');
         
         if (!fs.existsSync(suggestionsPath)) {
             return res.json([]);
@@ -749,7 +755,7 @@ app.post('/api/email-marketing/suggest', async (req, res) => {
             return res.status(400).json({ error: 'Missing required fields' });
         }
         
-        const suggestionsPath = path.join(__dirname, 'data', 'email-suggestions.json');
+        const suggestionsPath = path.join(dataDir, 'email-suggestions.json');
         let suggestions = [];
         
         if (fs.existsSync(suggestionsPath)) {
@@ -780,22 +786,8 @@ app.get('/api/email-marketing/:userId', async (req, res) => {
         const userId = req.params.userId;
         console.log('Fetching email stats for user:', userId);
         
-        // Check if this is running on Render
-        const isRender = process.env.RENDER === 'true' || process.env.RENDER_EXTERNAL_URL;
-        
-        // For Render or invalid user IDs, return default stats without trying to read files
-        if (isRender || userId === 'No users available' || userId === 'undefined') {
-            const defaultStats = {
-                sent: Math.floor(Math.random() * 1000),
-                total: Math.floor(Math.random() * 5000) + 1000,
-                lastUpdated: new Date().toISOString()
-            };
-            console.log('Using in-memory default stats for', userId, defaultStats);
-            return res.json(defaultStats);
-        }
-        
         // Ensure the email-stats directory exists
-        const emailStatsDir = path.join(__dirname, 'data', 'email-stats');
+        const emailStatsDir = path.join(dataDir, 'email-stats');
         if (!fs.existsSync(emailStatsDir)) {
             fs.mkdirSync(emailStatsDir, { recursive: true });
         }
@@ -806,8 +798,8 @@ app.get('/api/email-marketing/:userId', async (req, res) => {
         // Create default stats if file doesn't exist
         if (!fs.existsSync(statsPath)) {
             const defaultStats = {
-                sent: Math.floor(Math.random() * 1000),
-                total: Math.floor(Math.random() * 5000) + 1000,
+                sent: 0,
+                total: 0,
                 lastUpdated: new Date().toISOString()
             };
             fs.writeFileSync(statsPath, JSON.stringify(defaultStats, null, 2));
@@ -820,13 +812,7 @@ app.get('/api/email-marketing/:userId', async (req, res) => {
         res.json(stats);
     } catch (error) {
         console.error('Error fetching email stats:', error);
-        // Return default stats in case of error
-        const defaultStats = {
-            sent: Math.floor(Math.random() * 1000),
-            total: Math.floor(Math.random() * 5000) + 1000,
-            lastUpdated: new Date().toISOString()
-        };
-        res.json(defaultStats);
+        res.status(500).json({ error: 'Failed to fetch email stats' });
     }
 });
 
@@ -862,7 +848,7 @@ app.post('/api/email-marketing/:userId', async (req, res) => {
         }
         
         // Ensure the email-stats directory exists
-        const emailStatsDir = path.join(__dirname, 'data', 'email-stats');
+        const emailStatsDir = path.join(dataDir, 'email-stats');
         if (!fs.existsSync(emailStatsDir)) {
             fs.mkdirSync(emailStatsDir, { recursive: true });
         }
@@ -878,7 +864,7 @@ app.post('/api/email-marketing/:userId', async (req, res) => {
         fs.writeFileSync(statsPath, JSON.stringify(stats, null, 2));
         
         // Also update the user's metrics file to keep dashboard in sync
-        const metricsDir = path.join(__dirname, 'data', 'metrics');
+        const metricsDir = path.join(dataDir, 'metrics');
         if (!fs.existsSync(metricsDir)) {
             fs.mkdirSync(metricsDir, { recursive: true });
         }
@@ -921,175 +907,32 @@ app.post('/api/email-marketing/:userId', async (req, res) => {
 });
 
 // Helper functions for website configurations
-const WEBSITE_CONFIGS_FILE = path.join(__dirname, 'data', 'website-configs.json');
+const WEBSITE_CONFIGS_FILE = path.join(dataDir, 'website-configs.json');
 
 function readWebsiteConfigs() {
     try {
-        // Check if this is running on Render
-        const isRender = process.env.RENDER === 'true' || process.env.RENDER_EXTERNAL_URL;
-        
-        // Default configs for when filesystem fails (especially on Render)
-        const defaultConfigs = {
-            'admin1': {
-                userId: 'admin1',
-                state: 2,
-                websiteUrl: 'https://example.com/admin-site',
-                previewImageUrl: 'https://placehold.co/600x400?text=Admin+Website',
-                brandName: 'Admin Brand',
-                websiteType: 'Business',
-                colorScheme: {
-                    primary: '#4a90e2',
-                    secondary: '#ffffff',
-                    tertiary: '#333333'
-                },
-                submissions: [],
-                queries: [
-                    {
-                        timestamp: new Date().toISOString(),
-                        changes: 'Please add a contact form',
-                        status: 'In Progress'
-                    }
-                ],
-                lastUpdated: new Date().toISOString()
-            },
-            'user1': {
-                userId: 'user1',
-                state: 1,
-                websiteUrl: 'https://example.com/user-site',
-                previewImageUrl: 'https://placehold.co/600x400?text=User+Website',
-                brandName: 'User Brand',
-                websiteType: 'Portfolio',
-                colorScheme: {
-                    primary: '#e24a90',
-                    secondary: '#f5f5f5',
-                    tertiary: '#222222'
-                },
-                submissions: [],
-                queries: [],
-                lastUpdated: new Date().toISOString()
-            },
-            'gupta': {
-                userId: 'gupta',
-                state: 2,
-                websiteUrl: 'https://example.com/gupta-site',
-                previewImageUrl: 'https://placehold.co/600x400?text=Gupta+Website',
-                brandName: 'Gupta Enterprises',
-                websiteType: 'E-commerce',
-                colorScheme: {
-                    primary: '#90e24a',
-                    secondary: '#ffffff',
-                    tertiary: '#444444'
-                },
-                submissions: [],
-                queries: [
-                    {
-                        timestamp: new Date().toISOString(),
-                        changes: 'Please add a products section',
-                        status: 'Pending'
-                    }
-                ],
-                lastUpdated: new Date().toISOString()
-            }
-        };
-        
-        if (isRender) {
-            console.log('Running on Render, using default website configs');
-            return defaultConfigs;
-        }
-        
-        // Create data directory if it doesn't exist
-        const dataDir = path.join(__dirname, 'data');
+        // Create directory if it doesn't exist
         if (!fs.existsSync(dataDir)) {
             fs.mkdirSync(dataDir, { recursive: true });
         }
 
         // Create configs file if it doesn't exist
         if (!fs.existsSync(WEBSITE_CONFIGS_FILE)) {
-            fs.writeFileSync(WEBSITE_CONFIGS_FILE, JSON.stringify(defaultConfigs, null, 2), 'utf8');
-            return defaultConfigs;
+            fs.writeFileSync(WEBSITE_CONFIGS_FILE, '{}', 'utf8');
+            return {};
         }
 
         const data = fs.readFileSync(WEBSITE_CONFIGS_FILE, 'utf8');
-        const configs = JSON.parse(data);
-        
-        if (!configs || Object.keys(configs).length === 0) {
-            console.log('No website configs found in file, using defaults');
-            return defaultConfigs;
-        }
-        
-        return configs;
+        return JSON.parse(data);
     } catch (error) {
         console.error('Error reading website configs:', error);
-        // Return default configs if there's an error
-        return {
-            'admin1': {
-                userId: 'admin1',
-                state: 2,
-                websiteUrl: 'https://example.com/admin-site',
-                previewImageUrl: 'https://placehold.co/600x400?text=Admin+Website',
-                brandName: 'Admin Brand',
-                websiteType: 'Business',
-                colorScheme: {
-                    primary: '#4a90e2',
-                    secondary: '#ffffff',
-                    tertiary: '#333333'
-                },
-                submissions: [],
-                queries: [
-                    {
-                        timestamp: new Date().toISOString(),
-                        changes: 'Please add a contact form',
-                        status: 'In Progress'
-                    }
-                ],
-                lastUpdated: new Date().toISOString()
-            },
-            'user1': {
-                userId: 'user1',
-                state: 1,
-                websiteUrl: 'https://example.com/user-site',
-                previewImageUrl: 'https://placehold.co/600x400?text=User+Website',
-                brandName: 'User Brand',
-                websiteType: 'Portfolio',
-                colorScheme: {
-                    primary: '#e24a90',
-                    secondary: '#f5f5f5',
-                    tertiary: '#222222'
-                },
-                submissions: [],
-                queries: [],
-                lastUpdated: new Date().toISOString()
-            },
-            'gupta': {
-                userId: 'gupta',
-                state: 2,
-                websiteUrl: 'https://example.com/gupta-site',
-                previewImageUrl: 'https://placehold.co/600x400?text=Gupta+Website',
-                brandName: 'Gupta Enterprises',
-                websiteType: 'E-commerce',
-                colorScheme: {
-                    primary: '#90e24a',
-                    secondary: '#ffffff',
-                    tertiary: '#444444'
-                },
-                submissions: [],
-                queries: [
-                    {
-                        timestamp: new Date().toISOString(),
-                        changes: 'Please add a products section',
-                        status: 'Pending'
-                    }
-                ],
-                lastUpdated: new Date().toISOString()
-            }
-        };
+        return {};
     }
 }
 
 function writeWebsiteConfigs(configs) {
     try {
-        // Create data directory if it doesn't exist
-        const dataDir = path.join(__dirname, 'data');
+        // Create directory if it doesn't exist
         if (!fs.existsSync(dataDir)) {
             fs.mkdirSync(dataDir, { recursive: true });
         }
@@ -1493,7 +1336,7 @@ app.delete('/api/preview/:userId', (req, res) => {
 
 // Function to read logo preferences
 function readLogoPreferences() {
-    const filePath = path.join(__dirname, 'data', 'logo-preferences.json');
+    const filePath = path.join(dataDir, 'logo-preferences.json');
     if (!fs.existsSync(filePath)) {
         // Create directory if it doesn't exist
         if (!fs.existsSync(path.dirname(filePath))) {
@@ -1515,7 +1358,7 @@ function readLogoPreferences() {
 
 // Function to write logo preferences
 function writeLogoPreferences(preferences) {
-    const filePath = path.join(__dirname, 'data', 'logo-preferences.json');
+    const filePath = path.join(dataDir, 'logo-preferences.json');
     // Create directory if it doesn't exist
     if (!fs.existsSync(path.dirname(filePath))) {
         fs.mkdirSync(path.dirname(filePath), { recursive: true });
@@ -1732,15 +1575,15 @@ app.delete('/api/logo/:userId', (req, res) => {
 
 // ====================== Instagram Marketing API ======================
 // Create directory for Instagram marketing data if it doesn't exist
-if (!fs.existsSync(path.join(__dirname, 'data', 'instagram-marketing'))) {
-    fs.mkdirSync(path.join(__dirname, 'data', 'instagram-marketing'), { recursive: true });
+if (!fs.existsSync(path.join(dataDir, 'instagram-marketing'))) {
+    fs.mkdirSync(path.join(dataDir, 'instagram-marketing'), { recursive: true });
 }
 
 // Get Instagram marketing data
 app.get('/api/instagram-marketing/:userId', (req, res) => {
     try {
         const userId = req.params.userId;
-        const filePath = path.join(__dirname, 'data', 'instagram-marketing', `${userId}.json`);
+        const filePath = path.join(dataDir, 'instagram-marketing', `${userId}.json`);
         
         if (!fs.existsSync(filePath)) {
             // Return default data if file doesn't exist
@@ -1765,7 +1608,7 @@ app.post('/api/instagram-marketing/:userId', (req, res) => {
     try {
         const userId = req.params.userId;
         const { accountsReached, leadsConverted } = req.body;
-        const filePath = path.join(__dirname, 'data', 'instagram-marketing', `${userId}.json`);
+        const filePath = path.join(dataDir, 'instagram-marketing', `${userId}.json`);
         
         // Read existing data or create default
         let data = {};
@@ -1799,7 +1642,7 @@ app.post('/api/instagram-marketing/:userId/preference', (req, res) => {
     try {
         const userId = req.params.userId;
         const { niche } = req.body;
-        const filePath = path.join(__dirname, 'data', 'instagram-marketing', `${userId}.json`);
+        const filePath = path.join(dataDir, 'instagram-marketing', `${userId}.json`);
         
         if (!niche) {
             return res.status(400).json({ error: 'Niche is required' });
@@ -1868,7 +1711,43 @@ app.post('/api/upcoming-meetings/:userId', (req, res) => {
     res.json({ success: true, message: 'Meeting data updated successfully' });
 });
 
-const PORT = process.env.PORT || 5000;
+// Ensure data directories exist
+if (!fs.existsSync(dataDir)) {
+    fs.mkdirSync(dataDir, { recursive: true });
+}
+
+// Ensure subdirectories exist
+['email-stats', 'metrics', 'historical', 'logo-preferences', 'instagram-marketing'].forEach(subDir => {
+    const dir = path.join(dataDir, subDir);
+    if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
+    }
+});
+
+// Improved error handling for uncaught exceptions
+process.on('uncaughtException', (error) => {
+    console.error('Uncaught Exception:', error);
+    // Log to file here if needed
+    // Optionally, you could restart the server here
+});
+
+// Handle unhandled promise rejections
+process.on('unhandledRejection', (reason, promise) => {
+    console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+    // Log to file here if needed
+});
+
+// Graceful shutdown
+process.on('SIGTERM', () => {
+    console.log('SIGTERM received, shutting down gracefully');
+    // Close any database connections or other resources here
+    process.exit(0);
+});
+
+// Listen on all interfaces (0.0.0.0) to make the server accessible externally
+const PORT = process.env.PORT || 8080;
 app.listen(PORT, '0.0.0.0', () => {
     console.log(`Server running on port ${PORT}`);
+    console.log(`Access locally via: http://localhost:${PORT}`);
+    console.log(`For access from other devices use your computer's IP address`);
 }); 
