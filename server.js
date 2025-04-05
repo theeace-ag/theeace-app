@@ -784,33 +784,77 @@ app.post('/api/dashboard/historical/:userId', async (req, res) => {
             return res.status(400).json({ error: 'Missing required fields' });
         }
         
+        console.log('[DEBUG] Saving historical data for user:', userId);
+        console.log('[DEBUG] Data received:', { date, sessions, sales, orders, conversion });
+        
+        // Ensure the historical directory exists
+        const historicalDir = path.join(__dirname, 'data', 'historical');
+        if (!fs.existsSync(historicalDir)) {
+            console.log(`[DEBUG] Creating historical directory: ${historicalDir}`);
+            fs.mkdirSync(historicalDir, { recursive: true });
+        }
+        
         const historicalPath = path.join(__dirname, 'data', 'historical', `${userId}.json`);
+        console.log(`[DEBUG] Historical data file path: ${historicalPath}`);
+        
         let historical = [];
         
+        // Check if file exists and read it
         if (fs.existsSync(historicalPath)) {
-            historical = JSON.parse(fs.readFileSync(historicalPath, 'utf8'));
+            console.log('[DEBUG] Existing historical file found, reading contents');
+            try {
+                const data = fs.readFileSync(historicalPath, 'utf8');
+                if (data && data.trim() !== '') {
+                    historical = JSON.parse(data);
+                    if (!Array.isArray(historical)) {
+                        console.log('[DEBUG] Historical data is not an array, resetting to empty array');
+                        historical = [];
+                    }
+                }
+            } catch (readError) {
+                console.error('[DEBUG] Error reading historical file:', readError);
+                historical = [];
+            }
+        } else {
+            console.log('[DEBUG] Historical file does not exist, will create new one');
         }
+        
+        console.log(`[DEBUG] Current historical entries: ${historical.length}`);
         
         // Remove existing entry for the same date if it exists
         historical = historical.filter(entry => entry.date !== date);
         
         // Add new entry
-        historical.push({
+        const newEntry = {
             date,
             sessions: Number(sessions),
             sales: Number(sales),
             orders: Number(orders),
             conversion: Number(conversion)
-        });
+        };
+        
+        historical.push(newEntry);
+        console.log('[DEBUG] Added new historical entry:', newEntry);
         
         // Sort by date
         historical.sort((a, b) => new Date(a.date) - new Date(b.date));
         
-        fs.writeFileSync(historicalPath, JSON.stringify(historical, null, 2));
-        res.json({ success: true, historical });
+        // Write the file
+        try {
+            fs.writeFileSync(historicalPath, JSON.stringify(historical, null, 2), 'utf8');
+            console.log('[DEBUG] Successfully wrote historical data to file');
+            res.json({ success: true, historical });
+        } catch (writeError) {
+            console.error('[DEBUG] Error writing historical data:', writeError);
+            throw writeError;
+        }
     } catch (error) {
-        console.error('Error saving historical data:', error);
-        res.status(500).json({ error: 'Failed to save historical data' });
+        console.error('[DEBUG] Error saving historical data:', error);
+        res.status(500).json({ 
+            error: 'Failed to save historical data', 
+            message: error.message,
+            stack: error.stack
+        });
     }
 });
 
