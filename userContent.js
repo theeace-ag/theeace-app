@@ -1,3 +1,8 @@
+// API URL configuration
+const API_URL = window.location.hostname === 'localhost' 
+    ? 'http://localhost:5000' 
+    : '';  // Empty string for relative paths in production
+
 // General CSS styles for the user content page
 const generalCSS = `
     .container {
@@ -36,7 +41,7 @@ let currentConfig = null;
 async function loadUsers() {
     try {
         console.log('Fetching users...');
-        const response = await fetch('/api/users');
+        const response = await fetch(`${API_URL}/api/users`);
         
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
@@ -72,7 +77,7 @@ async function loadUsers() {
 // Load user's metrics
 async function loadUserMetrics(userId) {
     try {
-        const response = await fetch(`/api/dashboard/metrics/${userId}`);
+        const response = await fetch(`${API_URL}/api/dashboard/metrics/${userId}`);
         if (!response.ok) {
             throw new Error('Failed to fetch metrics');
         }
@@ -127,7 +132,7 @@ function formatMetricChange(change) {
 // Load historical data
 async function loadHistoricalData(userId) {
     try {
-        const response = await fetch(`/api/dashboard/historical/${userId}`);
+        const response = await fetch(`${API_URL}/api/dashboard/historical/${userId}`);
         if (!response.ok) {
             throw new Error('Failed to fetch historical data');
         }
@@ -190,7 +195,7 @@ async function saveHistoricalRow(button) {
     };
 
     try {
-        const response = await fetch(`/api/dashboard/historical/${userId}`, {
+        const response = await fetch(`${API_URL}/api/dashboard/historical/${userId}`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -216,7 +221,7 @@ async function saveHistoricalRow(button) {
 // Update metrics based on historical data
 async function updateMetricsFromHistorical(userId) {
     try {
-        const response = await fetch(`/api/dashboard/historical/${userId}`);
+        const response = await fetch(`${API_URL}/api/dashboard/historical/${userId}`);
         if (!response.ok) {
             throw new Error('Failed to fetch historical data');
         }
@@ -251,7 +256,7 @@ async function updateMetricsFromHistorical(userId) {
         
         // Update each metric
         for (const [metric, data] of Object.entries(metrics)) {
-            await fetch(`/api/dashboard/metrics/${userId}`, {
+            await fetch(`${API_URL}/api/dashboard/metrics/${userId}`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
@@ -279,7 +284,7 @@ async function deleteHistoricalRow(button) {
     const date = row.cells[0].querySelector('input').value;
 
     try {
-        const response = await fetch(`/api/dashboard/historical/${userId}/${date}`, {
+        const response = await fetch(`${API_URL}/api/dashboard/historical/${userId}/${date}`, {
             method: 'DELETE'
         });
 
@@ -311,7 +316,7 @@ async function updateMetric(button) {
     const change = parseFloat(row.cells[2].textContent.replace('↑', '').replace('↓', '').replace('%', ''));
 
     try {
-        const response = await fetch(`/api/dashboard/metrics/${userId}`, {
+        const response = await fetch(`${API_URL}/api/dashboard/metrics/${userId}`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -403,7 +408,7 @@ async function updateEmailStats() {
         button.disabled = true;
         button.textContent = 'Saving...';
 
-        const response = await fetch(`/api/email-marketing/${userId}`, {
+        const response = await fetch(`${API_URL}/api/email-marketing/${userId}`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -460,7 +465,7 @@ async function updateEmailStats() {
 async function loadEmailStats(userId) {
     try {
         console.log('Loading email stats for user:', userId);
-        const response = await fetch(`/api/email-marketing/${userId}`);
+        const response = await fetch(`${API_URL}/api/email-marketing/${userId}`);
         
         if (!response.ok) {
             throw new Error('Failed to fetch email stats');
@@ -482,8 +487,8 @@ async function loadEmailStats(userId) {
 async function loadEmailSuggestions(userId) {
     try {
         const url = userId 
-            ? `/api/email-marketing/suggestions?userId=${userId}`
-            : '/api/email-marketing/suggestions';
+            ? `${API_URL}/api/email-marketing/suggestions?userId=${userId}`
+            : `${API_URL}/api/email-marketing/suggestions`;
             
         const response = await fetch(url);
         if (!response.ok) {
@@ -527,7 +532,7 @@ async function submitSuggestion(event) {
         const suggestion = document.getElementById('suggestionInput').value;
         const username = document.getElementById('userSelect').selectedOptions[0].text.split(' ')[0];
         
-        const response = await fetch('/api/email-marketing/suggest', {
+        const response = await fetch(`${API_URL}/api/email-marketing/suggest`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -584,7 +589,7 @@ const debouncedUpdateWebsiteState = debounce(async (state) => {
         console.log(`Updating website state to ${state} for user ${userId}`);
         
         // Simple state update endpoint
-        const response = await fetch(`/api/website-config/${userId}/state`, {
+        const response = await fetch(`${API_URL}/api/website-config/${userId}/state`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -623,7 +628,7 @@ async function loadWebsiteConfig(userId) {
         console.log('Loading website configuration for user:', userId);
         currentUserId = userId;
         
-        const response = await fetch(`/api/website-config/${userId}`);
+        const response = await fetch(`${API_URL}/api/website-config/${userId}`);
         if (!response.ok) {
             throw new Error(`Failed to fetch website configuration: ${response.status}`);
         }
@@ -774,7 +779,7 @@ async function saveWebsiteDetails() {
         console.log('Saving website details:', websiteData);
         
         // Save to server
-        const response = await fetch(`/api/website-config/${userId}`, {
+        const response = await fetch(`${API_URL}/api/website-config/${userId}`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -935,7 +940,7 @@ async function submitWebsiteQuery(event) {
         submitButton.disabled = true;
         submitButton.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Submitting...';
         
-        const response = await fetch(`/api/website-config/${userId}/query`, {
+        const response = await fetch(`${API_URL}/api/website-config/${userId}/query`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -973,7 +978,7 @@ async function submitWebsiteQuery(event) {
 async function loadLogoPreferenceNotes(userId) {
     try {
         console.log('Loading logo preference notes for user:', userId);
-        const response = await fetch(`/api/logo-preference/${userId}`);
+        const response = await fetch(`${API_URL}/api/logo-preference/${userId}`);
         
         if (!response.ok) {
             throw new Error('Failed to fetch logo preferences');
@@ -1011,7 +1016,7 @@ async function loadLogoPreferenceNotes(userId) {
 // Load website queries
 async function loadWebsiteQueries(userId) {
     try {
-        const response = await fetch(`/api/website-config/${userId}/queries`);
+        const response = await fetch(`${API_URL}/api/website-config/${userId}/queries`);
         
         if (!response.ok) {
             throw new Error('Failed to fetch website queries');
@@ -1086,7 +1091,7 @@ async function submitWebsiteConfig(event) {
         };
         
         // Send to server
-        const response = await fetch(`/api/website-config/${userId}`, {
+        const response = await fetch(`${API_URL}/api/website-config/${userId}`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'

@@ -41,6 +41,7 @@ const dirs = [
 
 dirs.forEach(dir => {
     if (!fs.existsSync(dir)) {
+        console.log(`Creating directory: ${dir}`);
         fs.mkdirSync(dir, { recursive: true });
     }
 });
@@ -58,7 +59,20 @@ const dataFiles = {
 Object.entries(dataFiles).forEach(([file, defaultContent]) => {
     const filePath = path.join(__dirname, file);
     if (!fs.existsSync(filePath)) {
-        fs.writeFileSync(filePath, JSON.stringify(defaultContent, null, 2));
+        console.log(`Creating data file: ${filePath}`);
+        
+        // Ensure the directory exists
+        const dir = path.dirname(filePath);
+        if (!fs.existsSync(dir)) {
+            fs.mkdirSync(dir, { recursive: true });
+        }
+        
+        try {
+            fs.writeFileSync(filePath, JSON.stringify(defaultContent, null, 2));
+            console.log(`Successfully created: ${filePath}`);
+        } catch (err) {
+            console.error(`Error creating ${filePath}:`, err);
+        }
     }
 });
 
@@ -84,10 +98,34 @@ let instagramData = {};
 // Helper function to read users
 function readUsers() {
     try {
-        const data = fs.readFileSync(usersFilePath);
-        return JSON.parse(data);
+        if (!fs.existsSync(usersFilePath)) {
+            console.log(`Users file doesn't exist at path: ${usersFilePath}, creating empty file`);
+            writeUsers([]);
+            return [];
+        }
+        
+        const data = fs.readFileSync(usersFilePath, 'utf8');
+        if (!data || data.trim() === '') {
+            console.log('Users file is empty, initializing with empty array');
+            return [];
+        }
+        
+        try {
+            const users = JSON.parse(data);
+            if (!Array.isArray(users)) {
+                console.warn('Users data is not an array, resetting to empty array');
+                writeUsers([]);
+                return [];
+            }
+            return users;
+        } catch (parseError) {
+            console.error('Error parsing users JSON:', parseError);
+            console.log('Resetting users file to empty array');
+            writeUsers([]);
+            return [];
+        }
     } catch (error) {
-        console.error('Error reading users:', error);
+        console.error('Error reading users file:', error);
         return [];
     }
 }
@@ -95,9 +133,18 @@ function readUsers() {
 // Helper function to write users
 function writeUsers(users) {
     try {
-        fs.writeFileSync(usersFilePath, JSON.stringify(users, null, 2));
+        // Ensure the directory exists
+        const dir = path.dirname(usersFilePath);
+        if (!fs.existsSync(dir)) {
+            fs.mkdirSync(dir, { recursive: true });
+        }
+        
+        // Write the file
+        fs.writeFileSync(usersFilePath, JSON.stringify(users, null, 2), 'utf8');
+        console.log(`Successfully wrote ${users.length} users to file`);
+        return true;
     } catch (error) {
-        console.error('Error writing users:', error);
+        console.error('Error writing users file:', error);
         throw error;
     }
 }
@@ -209,15 +256,30 @@ async function sendEmail(to, subject, text) {
 app.get('/api/users', (req, res) => {
     try {
         console.log('GET /api/users - Fetching all users');
+        console.log('User file path:', usersFilePath);
+        
+        // Check if file exists
+        const fileExists = fs.existsSync(usersFilePath);
+        console.log('User file exists:', fileExists);
+        
+        if (!fileExists) {
+            console.log('Creating empty users file');
+            writeUsers([]);
+        }
+        
         const users = readUsers();
-        console.log('Users found:', users.length);
-        console.log('User data:', JSON.stringify(users, null, 2));
+        console.log(`Found ${users.length} users in the database`);
+        if (users.length > 0) {
+            console.log('First user:', JSON.stringify(users[0], null, 2));
+        }
+        
         res.json(users);
     } catch (error) {
         console.error('Error in GET /api/users:', error);
         res.status(500).json({ 
             message: 'Error reading users',
-            error: error.message 
+            error: error.message,
+            stack: error.stack 
         });
     }
 });
