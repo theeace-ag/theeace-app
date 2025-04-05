@@ -48,4 +48,4 @@ user2,67890,password2
 - `admin.js`: Admin functionality
 - `script.js`: Login functionality
 - `styles.css`: Styling
-- `users.json`: User database 
+- `users.json`: User database
