@@ -55,12 +55,17 @@ const dataFiles = {
     'content.json': {},
     'metrics.json': {},
     'historical.json': {},
-    'data/email-suggestions.json': []
+    'email-suggestions.json': []
 };
 
 Object.entries(dataFiles).forEach(([file, defaultContent]) => {
     const filePath = path.join(dataDir, file);
     if (!fs.existsSync(filePath)) {
+        // Ensure directory exists
+        const dir = path.dirname(filePath);
+        if (!fs.existsSync(dir)) {
+            fs.mkdirSync(dir, { recursive: true });
+        }
         fs.writeFileSync(filePath, JSON.stringify(defaultContent, null, 2));
     }
 });
