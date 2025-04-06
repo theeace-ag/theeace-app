@@ -108,9 +108,22 @@ app.get('/userContent', function(req, res) {
 
 // Update the data directory path for local and Glitch environments
 const isGlitch = process.env.PROJECT_DOMAIN !== undefined;
-const dataDir = isGlitch 
-    ? path.join(__dirname, '.data') 
-    : path.join(__dirname, 'server', 'data');
+const isRender = process.env.RENDER !== undefined;
+
+// Choose data directory location based on environment
+let dataDir;
+if (isGlitch) {
+    dataDir = path.join(__dirname, '.data');
+    console.log("Running on Glitch. Data directory:", dataDir);
+} else if (isRender) {
+    // On Render, use a directory at the project root
+    dataDir = path.join(__dirname, 'data');
+    console.log("Running on Render. Data directory:", dataDir);
+} else {
+    // Local development
+    dataDir = path.join(__dirname, 'server', 'data');
+    console.log("Running locally. Data directory:", dataDir);
+}
 
 // Define file paths
 const usersFilePath = path.join(dataDir, 'users.json');
@@ -118,13 +131,6 @@ const widgetsFilePath = path.join(dataDir, 'widgets.json');
 const contentFilePath = path.join(dataDir, 'content.json');
 const metricsFilePath = path.join(dataDir, 'metrics.json');
 const historicalFilePath = path.join(dataDir, 'historical.json');
-
-// Middleware
-app.use(express.static(path.join(__dirname, '.')));
-
-// Import utility functions
-// Update these paths if you refactor utility functions into separate files
-const { createDefaultUser } = require('./server/utils/create-user');
 
 // Make sure data directories exist
 const dirs = [
@@ -137,10 +143,13 @@ const dirs = [
     path.join(dataDir, 'instagram-marketing')
 ];
 
+// Create all required directories
 dirs.forEach(dir => {
     if (!fs.existsSync(dir)) {
         fs.mkdirSync(dir, { recursive: true });
         console.log(`Created directory: ${dir}`);
+    } else {
+        console.log(`Directory exists: ${dir}`);
     }
 });
 
@@ -185,13 +194,137 @@ let websiteQueries = {};
 let meetings = {}; // Storage for upcoming meetings data
 let instagramData = {};
 
-// Helper function to read users with better error handling
+// Import utility functions conditionally
+let createDefaultUser; 
+try {
+    const createUserPath = path.join(__dirname, 'server', 'utils', 'create-user.js');
+    if (fs.existsSync(createUserPath)) {
+        createDefaultUser = require(createUserPath).createDefaultUser;
+        console.log('Successfully loaded create-user.js utility');
+    } else {
+        console.log('create-user.js utility not found at:', createUserPath);
+        createDefaultUser = null;
+    }
+} catch (error) {
+    console.error('Error loading create-user.js utility:', error);
+    createDefaultUser = null;
+}
+
+// Helper function to create a default user (fallback if utils module isn't available)
+function createDefaultUserFallback() {
+    try {
+        console.log('Creating default admin user...');
+        const users = readUsers();
+        
+        // Check if admin user already exists
+        if (users.some(u => u.username === 'admin' || u.userId === 'admin1')) {
+            console.log('Admin user already exists');
+            return;
+        }
+        
+        // Create admin user
+        const adminUser = {
+            username: 'admin',
+            userId: 'admin1',
+            passkey: 'admin123',
+            createdAt: new Date().toISOString(),
+            lastLogin: null
+        };
+        
+        users.push(adminUser);
+        writeUsers(users);
+        console.log('Admin user created successfully');
+        
+        // Create default data files for the admin user
+        const createDataForUser = (userId) => {
+            // Email stats
+            const emailStatsDir = path.join(dataDir, 'email-stats');
+            if (!fs.existsSync(emailStatsDir)) {
+                fs.mkdirSync(emailStatsDir, { recursive: true });
+            }
+            
+            const statsPath = path.join(emailStatsDir, `${userId}.json`);
+            if (!fs.existsSync(statsPath)) {
+                fs.writeFileSync(statsPath, JSON.stringify({
+                    sent: 100,
+                    total: 500,
+                    lastUpdated: new Date().toISOString()
+                }, null, 2));
+            }
+            
+            // Metrics
+            const metricsDir = path.join(dataDir, 'metrics');
+            if (!fs.existsSync(metricsDir)) {
+                fs.mkdirSync(metricsDir, { recursive: true });
+            }
+            
+            const metricsPath = path.join(metricsDir, `${userId}.json`);
+            if (!fs.existsSync(metricsPath)) {
+                fs.writeFileSync(metricsPath, JSON.stringify({
+                    leads: 50,
+                    revenue: 10000,
+                    customers: 25,
+                    lastUpdated: new Date().toISOString()
+                }, null, 2));
+            }
+            
+            // Instagram marketing
+            const instagramDir = path.join(dataDir, 'instagram-marketing');
+            if (!fs.existsSync(instagramDir)) {
+                fs.mkdirSync(instagramDir, { recursive: true });
+            }
+            
+            const instagramPath = path.join(instagramDir, `${userId}.json`);
+            if (!fs.existsSync(instagramPath)) {
+                fs.writeFileSync(instagramPath, JSON.stringify({
+                    accountsReached: 2500,
+                    leadsConverted: 75,
+                    niche: "Technology",
+                    lastUpdated: new Date().toISOString()
+                }, null, 2));
+            }
+        };
+        
+        createDataForUser(adminUser.userId);
+        console.log('Default data created for admin user');
+        
+    } catch (error) {
+        console.error('Error creating default user:', error);
+    }
+}
+
+// Try to create a default user at startup
+setTimeout(() => {
+    if (createDefaultUser) {
+        console.log('Using imported createDefaultUser function');
+        createDefaultUser();
+    } else {
+        console.log('Using fallback createDefaultUser function');
+        createDefaultUserFallback();
+    }
+}, 1000); // Wait 1 second after server start
+
+// Helper function to read users with better error handling and debugging
 function readUsers() {
     try {
         console.log(`Reading users from: ${usersFilePath}`);
+        console.log(`File exists: ${fs.existsSync(usersFilePath)}`);
+        
+        // Check each parent directory exists
+        const dirPath = path.dirname(usersFilePath);
+        console.log(`Directory path: ${dirPath}, Exists: ${fs.existsSync(dirPath)}`);
+        
         if (!fs.existsSync(usersFilePath)) {
             console.log('Users file does not exist, creating empty file');
-            writeUsers([]);
+            
+            // Make sure the directory exists
+            if (!fs.existsSync(dirPath)) {
+                console.log(`Creating directory: ${dirPath}`);
+                fs.mkdirSync(dirPath, { recursive: true });
+            }
+            
+            fs.writeFileSync(usersFilePath, JSON.stringify([]), 'utf8');
+            console.log(`Created empty users file at ${usersFilePath}`);
             return [];
         }
         
@@ -203,28 +336,40 @@ function readUsers() {
             return [];
         }
         
-        const users = JSON.parse(data);
-        console.log(`Parsed ${users.length} users`);
-        return users;
+        try {
+            const users = JSON.parse(data);
+            console.log(`Parsed ${users.length} users`);
+            return users;
+        } catch (parseError) {
+            console.error('JSON parse error:', parseError);
+            console.log('Corrupted users file, creating backup and empty file');
+            
+            // Create backup of corrupted file
+            const backupPath = `${usersFilePath}.bak.${Date.now()}`;
+            fs.copyFileSync(usersFilePath, backupPath);
+            console.log(`Created backup at ${backupPath}`);
+            
+            // Write empty array
+            fs.writeFileSync(usersFilePath, JSON.stringify([]), 'utf8');
+            console.log('Created new empty users file');
+            return [];
+        }
     } catch (error) {
         console.error('Error reading users:', error);
-        // If there's a JSON parse error, the file might be corrupted
-        if (error instanceof SyntaxError) {
-            console.log('Users file appears to be corrupted, creating a backup and new file');
-            try {
-                // Create a backup of the corrupted file
-                if (fs.existsSync(usersFilePath)) {
-                    const backupPath = `${usersFilePath}.bak.${Date.now()}`;
-                    fs.copyFileSync(usersFilePath, backupPath);
-                    console.log(`Backup created at ${backupPath}`);
-                    
-                    // Create a new empty users file
-                    writeUsers([]);
-                }
-            } catch (backupError) {
-                console.error('Error creating backup:', backupError);
+        console.log('Error stack:', error.stack);
+        
+        try {
+            // Emergency recovery - create an empty users file
+            const dirPath = path.dirname(usersFilePath);
+            if (!fs.existsSync(dirPath)) {
+                fs.mkdirSync(dirPath, { recursive: true });
             }
+            fs.writeFileSync(usersFilePath, JSON.stringify([]), 'utf8');
+            console.log('Emergency recovery: Created empty users file');
+        } catch (recoveryError) {
+            console.error('Recovery failed:', recoveryError);
         }
+        
         return [];
     }
 }
