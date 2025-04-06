@@ -553,7 +553,13 @@ app.get('/api/users', (req, res) => {
 // Add single user with enhanced debugging
 app.post('/api/users', (req, res) => {
     try {
+        console.log('==========================================');
+        console.log('START: User Creation Process');
         console.log('Received user data:', JSON.stringify(req.body));
+        console.log('Data directory:', dataDir);
+        console.log('Users file path:', usersFilePath);
+        console.log('File exists:', fs.existsSync(usersFilePath));
+        
         const { username, userId, passkey } = req.body;
         
         // Validate input
@@ -585,38 +591,79 @@ app.post('/api/users', (req, res) => {
         users.push(newUser);
         
         console.log('Writing updated users list');
-        writeUsers(users);
-        console.log('User added successfully:', username);
+        const writeResult = writeUsers(users);
+        console.log('Write result:', writeResult);
         
-        // Create default stats and metrics for the new user
+        // Verify the user was added
+        const verifyUsers = readUsers();
+        console.log(`After adding: ${verifyUsers.length} users`);
+        const userExists = verifyUsers.some(u => u.userId === userId);
+        console.log(`Verified user exists: ${userExists}`);
+        
+        // Create default data files for the new user
         try {
-            // Create email stats
+            console.log('Creating default data for user:', userId);
+            
+            // Email stats
             const emailStatsDir = path.join(dataDir, 'email-stats');
-            const statsFilePath = path.join(emailStatsDir, `${userId}.json`);
             if (!fs.existsSync(emailStatsDir)) {
                 fs.mkdirSync(emailStatsDir, { recursive: true });
-            }
-            if (!fs.existsSync(statsFilePath)) {
-                const defaultStats = { sent: 0, total: 0, lastUpdated: new Date().toISOString() };
-                fs.writeFileSync(statsFilePath, JSON.stringify(defaultStats, null, 2));
-                console.log(`Created default email stats for user ${userId}`);
+                console.log(`Created email stats directory: ${emailStatsDir}`);
             }
             
-            // Create metrics
+            const statsPath = path.join(emailStatsDir, `${userId}.json`);
+            if (!fs.existsSync(statsPath)) {
+                fs.writeFileSync(statsPath, JSON.stringify({
+                    sent: 0,
+                    total: 0,
+                    lastUpdated: new Date().toISOString()
+                }, null, 2));
+                console.log(`Created email stats file for user: ${statsPath}`);
+            }
+            
+            // Metrics
             const metricsDir = path.join(dataDir, 'metrics');
-            const metricsFilePath = path.join(metricsDir, `${userId}.json`);
             if (!fs.existsSync(metricsDir)) {
                 fs.mkdirSync(metricsDir, { recursive: true });
+                console.log(`Created metrics directory: ${metricsDir}`);
             }
-            if (!fs.existsSync(metricsFilePath)) {
-                const defaultMetrics = { leads: 0, revenue: 0, customers: 0, lastUpdated: new Date().toISOString() };
-                fs.writeFileSync(metricsFilePath, JSON.stringify(defaultMetrics, null, 2));
-                console.log(`Created default metrics for user ${userId}`);
+            
+            const metricsPath = path.join(metricsDir, `${userId}.json`);
+            if (!fs.existsSync(metricsPath)) {
+                fs.writeFileSync(metricsPath, JSON.stringify({
+                    leads: 0,
+                    revenue: 0,
+                    customers: 0,
+                    lastUpdated: new Date().toISOString()
+                }, null, 2));
+                console.log(`Created metrics file for user: ${metricsPath}`);
             }
-        } catch (initError) {
-            console.error('Error creating user data files:', initError);
-            // We'll still return success since the user was created, but log the error
+            
+            // Instagram marketing
+            const instagramDir = path.join(dataDir, 'instagram-marketing');
+            if (!fs.existsSync(instagramDir)) {
+                fs.mkdirSync(instagramDir, { recursive: true });
+                console.log(`Created Instagram directory: ${instagramDir}`);
+            }
+            
+            const instagramPath = path.join(instagramDir, `${userId}.json`);
+            if (!fs.existsSync(instagramPath)) {
+                fs.writeFileSync(instagramPath, JSON.stringify({
+                    accountsReached: 0,
+                    leadsConverted: 0,
+                    niche: "",
+                    lastUpdated: new Date().toISOString()
+                }, null, 2));
+                console.log(`Created Instagram file for user: ${instagramPath}`);
+            }
+            
+        } catch (dataError) {
+            console.error('Error creating data files for new user:', dataError);
         }
+        
+        console.log('User added successfully:', username);
+        console.log('END: User Creation Process');
+        console.log('==========================================');
         
         // Notify connected clients about the new user
         notifyClients('user-created', { userId, username });
@@ -624,6 +671,7 @@ app.post('/api/users', (req, res) => {
         res.status(201).json(newUser);
     } catch (error) {
         console.error('Error adding user:', error);
+        console.error('Error stack:', error.stack);
         res.status(500).json({ message: 'Error adding user', error: error.message });
     }
 });

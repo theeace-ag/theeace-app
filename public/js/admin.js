@@ -1,7 +1,5 @@
 // API URL configuration
-const API_URL = window.location.hostname === 'localhost' 
-    ? 'http://localhost:5000' 
-    : 'https://theeace-login-portal.onrender.com';
+const API_URL = ''; // Use relative paths to current server
 
 // Load users when the page loads
 window.onload = function() {
