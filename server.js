@@ -53,11 +53,39 @@ function notifyClients(event, data, roomId = null) {
 
 const upload = multer({ dest: 'uploads/' });
 
+// Add proper MIME type handling for JavaScript and JSON files
+app.use((req, res, next) => {
+  const url = req.url;
+  
+  // Set correct MIME types for various file extensions
+  if (url.endsWith('.js')) {
+    res.setHeader('Content-Type', 'application/javascript');
+  } else if (url.endsWith('.json')) {
+    res.setHeader('Content-Type', 'application/json');
+  } else if (url.endsWith('.css')) {
+    res.setHeader('Content-Type', 'text/css');
+  } else if (url.endsWith('.html')) {
+    res.setHeader('Content-Type', 'text/html');
+  }
+  
+  next();
+});
+
 // Middleware
 app.use(cors());
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false }));
-app.use(express.static(path.join(__dirname, 'public')));
+
+// Serve files from public directory with explicit MIME handling
+app.use(express.static(path.join(__dirname, 'public'), {
+  setHeaders: (res, path) => {
+    if (path.endsWith('.js')) {
+      res.setHeader('Content-Type', 'application/javascript');
+    } else if (path.endsWith('.css')) {
+      res.setHeader('Content-Type', 'text/css');
+    }
+  }
+}));
 
 // Route handlers for the main pages
 app.get('/', function(req, res) {
@@ -2006,4 +2034,20 @@ server.listen(PORT, '0.0.0.0', () => {
     console.log(`Server running on port ${PORT}`);
     console.log(`Access locally via: http://localhost:${PORT}`);
     console.log(`For access from other devices use your computer's IP address`);
+});
+
+// Add direct routes for JS files to ensure correct MIME type
+app.get('/js/instagramMarketing.js', (req, res) => {
+  res.setHeader('Content-Type', 'application/javascript');
+  res.sendFile(path.join(__dirname, 'public/js/instagramMarketing.js'));
+});
+
+app.get('/js/userContent.js', (req, res) => {
+  res.setHeader('Content-Type', 'application/javascript');
+  res.sendFile(path.join(__dirname, 'public/js/userContent.js'));
+});
+
+app.get('/js/socket-client.js', (req, res) => {
+  res.setHeader('Content-Type', 'application/javascript');
+  res.sendFile(path.join(__dirname, 'public/js/socket-client.js'));
 }); 

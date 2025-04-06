@@ -1,3 +1,7 @@
+'use strict';
+
+// Initialize userContent variables and functions here
+
 // General CSS styles for the user content page
 const generalCSS = `
     .container {
@@ -838,74 +842,18 @@ function notifyDashboardOfWebsiteUpdate() {
 
 // Document load event listeners
 document.addEventListener('DOMContentLoaded', function() {
-    // Initialize the page first
-    initUserContentPage();
+    console.log('Initializing user content page');
     
-    // Then load users
-    loadUsers().then(() => {
-        // Add event listener for user selection
-        const userSelect = document.getElementById('userSelect');
-        if (userSelect) {
-            userSelect.addEventListener('change', function(event) {
-                const userId = event.target.value;
-                if (userId) {
-                    loadEmailStats(userId);
-                    loadWebsiteConfig(userId);
-                    loadEmailSuggestions(userId);
-                    loadLogoPreferenceNotes(userId);
-                    // Load other data as needed
-                }
-            });
-        }
-
-        // Add event listener for state toggle
-        const stateToggle = document.getElementById('stateToggle');
-        if (stateToggle) {
-            stateToggle.addEventListener('change', function(event) {
-                console.log('Toggle changed, new state:', event.target.checked ? 2 : 1);
-                const newState = event.target.checked ? 2 : 1;
-                debouncedUpdateWebsiteState(newState);
-            });
-        } else {
-            console.error('State toggle element not found in DOM');
-        }
-
-        // Add save website details button event listener
-        const saveWebsiteDetailsBtn = document.getElementById('saveWebsiteDetails');
-        if (saveWebsiteDetailsBtn) {
-            saveWebsiteDetailsBtn.addEventListener('click', saveWebsiteDetails);
-        }
-
-        // Add preview URL input change listener
-        const websitePreviewUrlInput = document.getElementById('websitePreviewUrl');
-        if (websitePreviewUrlInput) {
-            websitePreviewUrlInput.addEventListener('input', updatePreviewImage);
-        }
-
-        // Add event listener for email suggestion form
-        const suggestionForm = document.getElementById('suggestionForm');
-        if (suggestionForm) {
-            suggestionForm.addEventListener('submit', submitSuggestion);
-        }
-
-        // Add event listener for website query form
-        const websiteQueryForm = document.getElementById('websiteQueryForm');
-        if (websiteQueryForm) {
-            websiteQueryForm.addEventListener('submit', submitWebsiteQuery);
-        }
-
-        // Add event listener for website config form
-        const websiteConfigForm = document.getElementById('websiteConfigForm');
-        if (websiteConfigForm) {
-            websiteConfigForm.addEventListener('submit', submitWebsiteConfig);
-        }
-
-        // Select first user by default if available
-        if (userSelect && userSelect.options.length > 1) {
-            userSelect.selectedIndex = 1; // Select the first actual user
-            userSelect.dispatchEvent(new Event('change'));
-        }
-    });
+    // Get userId from localStorage
+    const userId = localStorage.getItem('userId');
+    if (!userId) {
+        console.error('No user ID found in localStorage');
+        showErrorMessage('User ID not found. Please log in again.');
+        return;
+    }
+    
+    // Load user data and populate the user content page
+    loadUserData(userId);
 });
 
 // Submit website query (from state 2)
@@ -1113,5 +1061,491 @@ async function submitWebsiteConfig(event) {
             submitButton.disabled = false;
             submitButton.innerHTML = 'Submit Configuration';
         }
+    }
+}
+
+// Function to load user data
+function loadUserData(userId) {
+    console.log('Loading data for user ID:', userId);
+    
+    // Load various components
+    loadEmailStats(userId);
+    loadWebsiteConfig(userId);
+    loadEmailSuggestions(userId);
+    loadLogoPreferenceNotes(userId);
+    loadInstagramMarketingData(userId);
+}
+
+// Function to show error message
+function showErrorMessage(message) {
+    const errorContainer = document.createElement('div');
+    errorContainer.className = 'error-message';
+    errorContainer.textContent = message;
+    document.body.appendChild(errorContainer);
+}
+
+// Function to load email statistics
+function loadEmailStats(userId) {
+    console.log('Loading email stats for user:', userId);
+    fetch(`/api/email-marketing/${userId}`)
+        .then(response => response.json())
+        .then(data => {
+            updateEmailStatsDisplay(data);
+        })
+        .catch(error => {
+            console.error('Error loading email stats:', error);
+        });
+}
+
+// Function to update email stats display
+function updateEmailStatsDisplay(data) {
+    const sentElement = document.getElementById('emailsSent');
+    const totalElement = document.getElementById('totalEmails');
+    const rateElement = document.getElementById('conversionRate');
+    
+    if (sentElement && totalElement && rateElement) {
+        sentElement.textContent = data.sent;
+        totalElement.textContent = data.total;
+        
+        // Calculate and display conversion rate
+        const rate = data.total > 0 ? ((data.sent / data.total) * 100).toFixed(1) : '0.0';
+        rateElement.textContent = `${rate}%`;
+    }
+}
+
+// Function to load website configuration
+function loadWebsiteConfig(userId) {
+    console.log('Loading website config for user:', userId);
+    fetch(`/api/website-config/${userId}`)
+        .then(response => response.json())
+        .then(data => {
+            // Update UI with website config data
+            const stateToggle = document.getElementById('stateToggle');
+            if (stateToggle) {
+                stateToggle.checked = data.state === 2;
+            }
+            
+            // Update other fields
+            if (data.websiteUrl) {
+                const websiteUrlInput = document.getElementById('websiteUrl');
+                if (websiteUrlInput) websiteUrlInput.value = data.websiteUrl;
+            }
+            
+            if (data.previewImageUrl) {
+                const previewUrlInput = document.getElementById('websitePreviewUrl');
+                if (previewUrlInput) previewUrlInput.value = data.previewImageUrl;
+                
+                const previewImage = document.getElementById('websitePreview');
+                if (previewImage) previewImage.src = data.previewImageUrl;
+            }
+        })
+        .catch(error => {
+            console.error('Error loading website config:', error);
+        });
+}
+
+// Function to load email suggestions
+function loadEmailSuggestions(userId) {
+    console.log('Loading email suggestions for user:', userId);
+    fetch(`/api/email-marketing/suggestions?userId=${userId}`)
+        .then(response => response.json())
+        .then(data => {
+            // Update UI with suggestions
+            const suggestionsList = document.getElementById('suggestionsList');
+            if (suggestionsList) {
+                suggestionsList.innerHTML = '';
+                
+                if (data.length === 0) {
+                    suggestionsList.innerHTML = '<p>No suggestions available.</p>';
+                    return;
+                }
+                
+                data.forEach(item => {
+                    const li = document.createElement('li');
+                    li.innerHTML = `
+                        <div class="suggestion-item">
+                            <p>${item.suggestion}</p>
+                            <small>Submitted: ${new Date(item.timestamp).toLocaleString()}</small>
+                        </div>
+                    `;
+                    suggestionsList.appendChild(li);
+                });
+            }
+        })
+        .catch(error => {
+            console.error('Error loading email suggestions:', error);
+        });
+}
+
+// Function to load logo preference notes
+function loadLogoPreferenceNotes(userId) {
+    console.log('Loading logo preferences for user:', userId);
+    fetch(`/api/logo-preference/${userId}`)
+        .then(response => response.json())
+        .then(data => {
+            // Update UI with logo preference data
+            const notesList = document.getElementById('logoNotesList');
+            if (notesList) {
+                notesList.innerHTML = '';
+                
+                if (!data.notes || data.notes.length === 0) {
+                    notesList.innerHTML = '<p>No logo notes available.</p>';
+                    return;
+                }
+                
+                data.notes.forEach(note => {
+                    const li = document.createElement('li');
+                    li.innerHTML = `
+                        <div class="note-item">
+                            <p>${note.text}</p>
+                            <small>Added: ${new Date(note.timestamp).toLocaleString()}</small>
+                        </div>
+                    `;
+                    notesList.appendChild(li);
+                });
+            }
+            
+            // Update logo image if available
+            if (data.logoUrl) {
+                const logoPreview = document.getElementById('logoPreview');
+                if (logoPreview) logoPreview.src = data.logoUrl;
+            }
+        })
+        .catch(error => {
+            console.error('Error loading logo preferences:', error);
+        });
+}
+
+// Function to load Instagram marketing data
+function loadInstagramMarketingData(userId) {
+    console.log('Loading Instagram marketing data for user:', userId);
+    fetch(`/api/instagram-marketing/${userId}`)
+        .then(response => response.json())
+        .then(data => {
+            updateInstagramDisplay(data);
+        })
+        .catch(error => {
+            console.error('Error loading Instagram marketing data:', error);
+        });
+}
+
+// Function to update Instagram marketing display
+function updateInstagramDisplay(data) {
+    const accountsElement = document.getElementById('accountsReached');
+    const leadsElement = document.getElementById('leadsConverted');
+    
+    if (accountsElement && leadsElement) {
+        accountsElement.textContent = data.accountsReached || 0;
+        leadsElement.textContent = data.leadsConverted || 0;
+    }
+    
+    // Update preferences list
+    const preferencesList = document.getElementById('instagramPreferencesList');
+    if (preferencesList && data.preferences) {
+        preferencesList.innerHTML = '';
+        
+        if (data.preferences.length === 0) {
+            preferencesList.innerHTML = '<p>No preferences set.</p>';
+            return;
+        }
+        
+        data.preferences.forEach(pref => {
+            const li = document.createElement('li');
+            li.innerHTML = `
+                <div class="preference-item">
+                    <p>${pref.niche}</p>
+                    <small>Added: ${new Date(pref.timestamp).toLocaleString()}</small>
+                </div>
+            `;
+            preferencesList.appendChild(li);
+        });
+    }
+}
+
+// Setup UI event listeners
+function setupUIEventListeners(userId) {
+    // Add event listener for state toggle
+    const stateToggle = document.getElementById('stateToggle');
+    if (stateToggle) {
+        stateToggle.addEventListener('change', function(event) {
+            console.log('Toggle changed, new state:', event.target.checked ? 2 : 1);
+            const newState = event.target.checked ? 2 : 1;
+            updateWebsiteState(userId, newState);
+        });
+    }
+    
+    // Add save website details button event listener
+    const saveWebsiteDetailsBtn = document.getElementById('saveWebsiteDetails');
+    if (saveWebsiteDetailsBtn) {
+        saveWebsiteDetailsBtn.addEventListener('click', function() {
+            saveWebsiteDetails(userId);
+        });
+    }
+    
+    // Add preview URL input change listener
+    const websitePreviewUrlInput = document.getElementById('websitePreviewUrl');
+    if (websitePreviewUrlInput) {
+        websitePreviewUrlInput.addEventListener('input', updatePreviewImage);
+    }
+    
+    // Add event listener for email suggestion form
+    const suggestionForm = document.getElementById('suggestionForm');
+    if (suggestionForm) {
+        suggestionForm.addEventListener('submit', function(event) {
+            event.preventDefault();
+            submitSuggestion(userId);
+        });
+    }
+    
+    // Add event listener for website query form
+    const websiteQueryForm = document.getElementById('websiteQueryForm');
+    if (websiteQueryForm) {
+        websiteQueryForm.addEventListener('submit', function(event) {
+            event.preventDefault();
+            submitWebsiteQuery(userId);
+        });
+    }
+    
+    // Add event listener for website config form
+    const websiteConfigForm = document.getElementById('websiteConfigForm');
+    if (websiteConfigForm) {
+        websiteConfigForm.addEventListener('submit', function(event) {
+            event.preventDefault();
+            submitWebsiteConfig(userId);
+        });
+    }
+}
+
+// Function to update website state
+function updateWebsiteState(userId, state) {
+    fetch(`/api/website-config/${userId}/state`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ state })
+    })
+    .then(response => response.json())
+    .then(data => {
+        console.log('Website state updated:', data);
+        
+        // Update UI based on state
+        const stateItems = document.querySelectorAll('.state-dependent');
+        stateItems.forEach(item => {
+            const forState = parseInt(item.getAttribute('data-state'));
+            if (forState === state) {
+                item.style.display = 'block';
+            } else {
+                item.style.display = 'none';
+            }
+        });
+    })
+    .catch(error => {
+        console.error('Error updating website state:', error);
+    });
+}
+
+// Function to save website details
+function saveWebsiteDetails(userId) {
+    const websiteUrl = document.getElementById('websiteUrl').value;
+    const previewUrl = document.getElementById('websitePreviewUrl').value;
+    
+    if (!websiteUrl) {
+        alert('Please enter a website URL');
+        return;
+    }
+    
+    // Show loading state on button
+    const saveButton = document.getElementById('saveWebsiteDetails');
+    const originalText = saveButton.textContent;
+    saveButton.textContent = 'Saving...';
+    saveButton.disabled = true;
+    
+    fetch(`/api/website-config/${userId}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            websiteUrl,
+            previewImageUrl: previewUrl,
+            state: 2
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        console.log('Website details saved:', data);
+        saveButton.textContent = 'Saved!';
+        
+        // Reset button after 2 seconds
+        setTimeout(() => {
+            saveButton.textContent = originalText;
+            saveButton.disabled = false;
+        }, 2000);
+        
+        // Update toggle if needed
+        const stateToggle = document.getElementById('stateToggle');
+        if (stateToggle) {
+            stateToggle.checked = true;
+        }
+        
+        // Notify dashboard
+        notifyDashboardOfWebsiteUpdate();
+    })
+    .catch(error => {
+        console.error('Error saving website details:', error);
+        saveButton.textContent = 'Error!';
+        
+        // Reset button after 2 seconds
+        setTimeout(() => {
+            saveButton.textContent = originalText;
+            saveButton.disabled = false;
+        }, 2000);
+    });
+}
+
+// Function to update preview image
+function updatePreviewImage() {
+    const previewUrl = document.getElementById('websitePreviewUrl').value;
+    const previewImage = document.getElementById('websitePreview');
+    
+    if (previewUrl && previewImage) {
+        previewImage.src = previewUrl;
+    }
+}
+
+// Function to submit email suggestion
+function submitSuggestion(userId) {
+    const suggestionInput = document.getElementById('suggestionInput');
+    const suggestion = suggestionInput.value.trim();
+    
+    if (!suggestion) {
+        alert('Please enter a suggestion');
+        return;
+    }
+    
+    fetch('/api/email-marketing/suggest', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            userId,
+            username: localStorage.getItem('username') || 'Unknown User',
+            suggestion
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        console.log('Suggestion submitted:', data);
+        suggestionInput.value = '';
+        
+        // Reload suggestions
+        loadEmailSuggestions(userId);
+    })
+    .catch(error => {
+        console.error('Error submitting suggestion:', error);
+    });
+}
+
+// Function to submit website query
+function submitWebsiteQuery(userId) {
+    const changesInput = document.getElementById('websiteChanges');
+    const changes = changesInput.value.trim();
+    
+    if (!changes) {
+        alert('Please describe the changes you want');
+        return;
+    }
+    
+    fetch(`/api/website-config/${userId}/query`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ changes })
+    })
+    .then(response => response.json())
+    .then(data => {
+        console.log('Website query submitted:', data);
+        changesInput.value = '';
+        alert('Your change request has been submitted!');
+    })
+    .catch(error => {
+        console.error('Error submitting website query:', error);
+    });
+}
+
+// Function to submit website configuration
+function submitWebsiteConfig(userId) {
+    const brandName = document.getElementById('brandName').value;
+    const websiteType = document.getElementById('websiteType').value;
+    
+    if (!brandName || !websiteType) {
+        alert('Please fill in all required fields');
+        return;
+    }
+    
+    // Get color values
+    const primaryColor = document.getElementById('primaryColor').value;
+    const secondaryColor = document.getElementById('secondaryColor').value;
+    const tertiaryColor = document.getElementById('tertiaryColor').value;
+    
+    const referenceWebsite = document.getElementById('referenceWebsite').value;
+    
+    fetch(`/api/website-config/${userId}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            brandName,
+            websiteType,
+            colors: {
+                primary: primaryColor,
+                secondary: secondaryColor,
+                tertiary: tertiaryColor
+            },
+            referenceWebsite,
+            state: 1
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        console.log('Website config submitted:', data);
+        alert('Website configuration has been saved!');
+        
+        // Update toggle if needed
+        const stateToggle = document.getElementById('stateToggle');
+        if (stateToggle) {
+            stateToggle.checked = false;
+        }
+    })
+    .catch(error => {
+        console.error('Error submitting website config:', error);
+    });
+}
+
+// Function to notify dashboard of website update
+function notifyDashboardOfWebsiteUpdate() {
+    // Send message to parent window
+    if (window.parent && window.parent !== window) {
+        console.log('Sending website update message to parent window');
+        window.parent.postMessage({
+            type: 'website-config-updated'
+        }, '*');
+    }
+    
+    // Also try to notify dashboard directly if there's a dashboard iframe
+    try {
+        const dashboardFrame = document.querySelector('iframe[name="dashboard"]');
+        if (dashboardFrame && dashboardFrame.contentWindow) {
+            console.log('Sending website update message to dashboard iframe');
+            dashboardFrame.contentWindow.postMessage({
+                type: 'website-config-updated'
+            }, '*');
+        }
+    } catch (error) {
+        console.error('Error sending message to dashboard:', error);
     }
 }
