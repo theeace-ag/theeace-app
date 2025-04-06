@@ -844,16 +844,72 @@ function notifyDashboardOfWebsiteUpdate() {
 document.addEventListener('DOMContentLoaded', function() {
     console.log('Initializing user content page');
     
-    // Get userId from localStorage
+    // Check if user is coming from dashboard (should have userId in localStorage)
     const userId = localStorage.getItem('userId');
-    if (!userId) {
-        console.error('No user ID found in localStorage');
-        showErrorMessage('User ID not found. Please log in again.');
-        return;
+    
+    // Load users into the dropdown regardless
+    loadUsers();
+    
+    // Set up the user select change listener
+    const userSelect = document.getElementById('userSelect');
+    if (userSelect) {
+        userSelect.addEventListener('change', function() {
+            const selectedUserId = this.value;
+            if (selectedUserId) {
+                console.log('User selected:', selectedUserId);
+                // Clear any info messages
+                const infoMessage = document.querySelector('.info-message');
+                if (infoMessage) {
+                    infoMessage.remove();
+                }
+                // Load data for the selected user
+                loadUserData(selectedUserId);
+            }
+        });
     }
     
-    // Load user data and populate the user content page
-    loadUserData(userId);
+    if (userId) {
+        console.log('User ID found in localStorage:', userId);
+        
+        // If user selector exists, set the value
+        const userSelect = document.getElementById('userSelect');
+        if (userSelect) {
+            // Wait a moment for users to load
+            setTimeout(() => {
+                userSelect.value = userId;
+                
+                // Trigger a change event to load the selected user's data
+                const event = new Event('change');
+                userSelect.dispatchEvent(event);
+            }, 500);
+        }
+        
+        // Load user data and populate the user content page
+        loadUserData(userId);
+    } else {
+        console.log('No user ID found in localStorage, waiting for user selection');
+        // User will need to select from dropdown
+        const userSelectContainer = document.querySelector('.user-select-container');
+        if (userSelectContainer) {
+            userSelectContainer.style.display = 'block';
+        }
+        
+        // Show a gentle message to select a user
+        const messageElement = document.createElement('div');
+        messageElement.className = 'info-message';
+        messageElement.textContent = 'Please select a user to manage content.';
+        messageElement.style.padding = '10px';
+        messageElement.style.backgroundColor = '#e7f3ff';
+        messageElement.style.border = '1px solid #b9d4ff';
+        messageElement.style.borderRadius = '4px';
+        messageElement.style.margin = '10px 0';
+        
+        // Insert the message at the top of the container
+        const container = document.querySelector('.container');
+        if (container && container.firstChild) {
+            container.insertBefore(messageElement, container.firstChild);
+        }
+    }
 });
 
 // Submit website query (from state 2)
