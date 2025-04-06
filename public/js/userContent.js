@@ -76,19 +76,37 @@ async function loadUsers() {
 // Load user's metrics
 async function loadUserMetrics(userId) {
     try {
+        console.log('Loading metrics for user:', userId);
         const response = await fetch(`/api/dashboard/metrics/${userId}`);
+        
         if (!response.ok) {
-            throw new Error('Failed to fetch metrics');
+            const errorText = await response.text();
+            console.error(`Error response (${response.status}):`, errorText);
+            throw new Error(`Failed to fetch metrics: ${response.status} ${response.statusText}`);
         }
+        
         const metrics = await response.json();
+        console.log('Received metrics data:', metrics);
         
         // Update metrics table
         updateMetricsTable(metrics);
         
         // Load historical data
-        loadHistoricalData(userId);
+        await loadHistoricalData(userId);
+        
+        return true;
     } catch (error) {
         console.error('Error loading metrics:', error);
+        const metricsTable = document.getElementById('metricsTable');
+        if (metricsTable) {
+            const rows = metricsTable.querySelectorAll('tr');
+            rows.forEach(row => {
+                if (row.cells.length >= 4) {
+                    row.cells[3].textContent = 'Error loading data';
+                }
+            });
+        }
+        return false;
     }
 }
 
@@ -131,21 +149,52 @@ function formatMetricChange(change) {
 // Load historical data
 async function loadHistoricalData(userId) {
     try {
+        console.log('Loading historical data for user:', userId);
         const response = await fetch(`/api/dashboard/historical/${userId}`);
+        
         if (!response.ok) {
-            throw new Error('Failed to fetch historical data');
+            const errorText = await response.text();
+            console.error(`Error response (${response.status}):`, errorText);
+            throw new Error(`Failed to fetch historical data: ${response.status} ${response.statusText}`);
         }
+        
         const data = await response.json();
+        console.log('Received historical data:', data);
         
         const tbody = document.getElementById('historicalData');
+        if (!tbody) {
+            console.error('Historical data table body not found');
+            return false;
+        }
+        
         tbody.innerHTML = '';
+        
+        if (data.length === 0) {
+            console.log('No historical data available for user');
+            const emptyRow = document.createElement('tr');
+            emptyRow.innerHTML = `<td colspan="6" style="text-align: center;">No historical data available</td>`;
+            tbody.appendChild(emptyRow);
+            return true;
+        }
         
         data.forEach(entry => {
             const row = createHistoricalRow(entry);
             tbody.appendChild(row);
         });
+        
+        return true;
     } catch (error) {
         console.error('Error loading historical data:', error);
+        
+        const tbody = document.getElementById('historicalData');
+        if (tbody) {
+            tbody.innerHTML = '';
+            const errorRow = document.createElement('tr');
+            errorRow.innerHTML = `<td colspan="6" style="text-align: center; color: #dc3545;">Error loading historical data</td>`;
+            tbody.appendChild(errorRow);
+        }
+        
+        return false;
     }
 }
 
@@ -844,6 +893,8 @@ function notifyDashboardOfWebsiteUpdate() {
 document.addEventListener('DOMContentLoaded', function() {
     console.log('Initializing user content page');
     
+    initUIEventListeners();
+    
     // Check if user is coming from dashboard (should have userId in localStorage)
     const userId = localStorage.getItem('userId');
     
@@ -856,14 +907,21 @@ document.addEventListener('DOMContentLoaded', function() {
         userSelect.addEventListener('change', function() {
             const selectedUserId = this.value;
             if (selectedUserId) {
-                console.log('User selected:', selectedUserId);
+                console.log('User selected from dropdown:', selectedUserId);
                 // Clear any info messages
                 const infoMessage = document.querySelector('.info-message');
                 if (infoMessage) {
                     infoMessage.remove();
                 }
+                
+                // Store the selected userId in case we need it later
+                localStorage.setItem('lastSelectedUser', selectedUserId);
+                
                 // Load data for the selected user
                 loadUserData(selectedUserId);
+                
+                // Setup UI-specific event listeners for this user
+                setupUIEventListeners(selectedUserId);
             }
         });
     }
@@ -882,10 +940,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 const event = new Event('change');
                 userSelect.dispatchEvent(event);
             }, 500);
+        } else {
+            // If no user selector, load data directly
+            loadUserData(userId);
+            setupUIEventListeners(userId);
         }
-        
-        // Load user data and populate the user content page
-        loadUserData(userId);
     } else {
         console.log('No user ID found in localStorage, waiting for user selection');
         // User will need to select from dropdown
@@ -911,6 +970,61 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 });
+
+// Initialize UI event listeners that don't depend on user selection
+function initUIEventListeners() {
+    console.log('Initializing UI event listeners');
+    
+    // Set up the website form listeners
+    const websiteConfigForm = document.getElementById('websiteConfigForm');
+    if (websiteConfigForm) {
+        websiteConfigForm.addEventListener('submit', submitWebsiteConfig);
+    }
+    
+    // Set up the website query form
+    const websiteQueryForm = document.getElementById('websiteQueryForm');
+    if (websiteQueryForm) {
+        websiteQueryForm.addEventListener('submit', submitWebsiteQuery);
+    }
+    
+    // Set up the suggestion form
+    const suggestionForm = document.getElementById('suggestionForm');
+    if (suggestionForm) {
+        suggestionForm.addEventListener('submit', submitSuggestion);
+    }
+    
+    // Set up the preview URL input
+    const previewUrlInput = document.getElementById('websitePreviewUrl');
+    if (previewUrlInput) {
+        previewUrlInput.addEventListener('input', updatePreviewImage);
+    }
+    
+    // Set up the save website details button
+    const saveWebsiteBtn = document.getElementById('saveWebsiteDetails');
+    if (saveWebsiteBtn) {
+        saveWebsiteBtn.addEventListener('click', saveWebsiteDetails);
+    }
+}
+
+// Setup UI event listeners specific to the selected user
+function setupUIEventListeners(userId) {
+    console.log('Setting up user-specific event listeners for user:', userId);
+    
+    // Add event listener for state toggle
+    const stateToggle = document.getElementById('stateToggle');
+    if (stateToggle) {
+        // Remove any existing event listeners
+        const newToggle = stateToggle.cloneNode(true);
+        stateToggle.parentNode.replaceChild(newToggle, stateToggle);
+        
+        // Add new event listener
+        newToggle.addEventListener('change', function() {
+            console.log('State toggle changed to:', this.checked ? 2 : 1);
+            const newState = this.checked ? 2 : 1;
+            debouncedUpdateWebsiteState(newState);
+        });
+    }
+}
 
 // Submit website query (from state 2)
 async function submitWebsiteQuery(event) {
@@ -1015,30 +1129,41 @@ async function loadLogoPreferenceNotes(userId) {
 // Load website queries
 async function loadWebsiteQueries(userId) {
     try {
+        console.log('Loading website queries for user:', userId);
         const response = await fetch(`/api/website-config/${userId}/queries`);
         
         if (!response.ok) {
-            throw new Error('Failed to fetch website queries');
+            const errorText = await response.text();
+            console.error(`Error response (${response.status}):`, errorText);
+            throw new Error(`Failed to fetch website queries: ${response.status} ${response.statusText}`);
         }
         
         const queries = await response.json();
+        console.log('Received website queries:', queries);
+        
         const tbody = document.getElementById('websiteQueries');
         
         if (!tbody) {
             console.error('Website queries table body not found');
-            return;
+            return false;
         }
         
         tbody.innerHTML = '';
         
-        if (queries.length === 0) {
+        if (!queries || queries.length === 0) {
+            console.log('No website queries found for user');
             const row = document.createElement('tr');
             row.innerHTML = `<td colspan="3" class="text-center">No website queries found</td>`;
             tbody.appendChild(row);
-            return;
+            return true;
         }
         
-        queries.forEach(query => {
+        // Reverse the array to show newest first
+        const sortedQueries = [...queries].sort((a, b) => 
+            new Date(b.timestamp) - new Date(a.timestamp)
+        );
+        
+        sortedQueries.forEach(query => {
             const row = document.createElement('tr');
             row.innerHTML = `
                 <td>${new Date(query.timestamp).toLocaleString()}</td>
@@ -1047,8 +1172,20 @@ async function loadWebsiteQueries(userId) {
             `;
             tbody.appendChild(row);
         });
+        
+        return true;
     } catch (error) {
         console.error('Error loading website queries:', error);
+        
+        const tbody = document.getElementById('websiteQueries');
+        if (tbody) {
+            tbody.innerHTML = '';
+            const errorRow = document.createElement('tr');
+            errorRow.innerHTML = `<td colspan="3" class="text-center" style="color: #dc3545;">Error loading website queries</td>`;
+            tbody.appendChild(errorRow);
+        }
+        
+        return false;
     }
 }
 
@@ -1123,13 +1260,54 @@ async function submitWebsiteConfig(event) {
 // Function to load user data
 function loadUserData(userId) {
     console.log('Loading data for user ID:', userId);
+    if (!userId) {
+        console.error('User ID is empty in loadUserData');
+        return;
+    }
     
-    // Load various components
-    loadEmailStats(userId);
-    loadWebsiteConfig(userId);
-    loadEmailSuggestions(userId);
-    loadLogoPreferenceNotes(userId);
-    loadInstagramMarketingData(userId);
+    // Set the currentUserId for persistence
+    currentUserId = userId;
+    
+    // Clear any error messages
+    const errorMessages = document.querySelectorAll('.error-message');
+    errorMessages.forEach(msg => msg.remove());
+    
+    try {
+        // Load metrics and historical data
+        loadUserMetrics(userId);
+        
+        // Load email and marketing data
+        loadEmailStats(userId);
+        loadEmailSuggestions(userId);
+        
+        // Load website configuration and related data
+        loadWebsiteConfig(userId);
+        loadWebsiteQueries(userId);
+        
+        // Load logo and preferences data
+        loadLogoPreferenceNotes(userId);
+        
+        // Load Instagram marketing data if the function exists
+        if (typeof loadInstagramMarketing === 'function') {
+            console.log('Loading Instagram marketing data');
+            loadInstagramMarketing(userId);
+        } else {
+            console.log('Instagram marketing function not available');
+            // Try with our internal function
+            loadInstagramMarketingData(userId);
+        }
+        
+        // Load upcoming meetings data if the function exists
+        if (typeof loadUpcomingMeetings === 'function') {
+            console.log('Loading upcoming meetings data');
+            loadUpcomingMeetings(userId);
+        }
+        
+        console.log('All data loading functions triggered for user:', userId);
+    } catch (error) {
+        console.error('Error in loadUserData:', error);
+        showErrorMessage('Error loading user data: ' + error.message);
+    }
 }
 
 // Function to show error message
@@ -1273,102 +1451,107 @@ function loadLogoPreferenceNotes(userId) {
 }
 
 // Function to load Instagram marketing data
-function loadInstagramMarketingData(userId) {
-    console.log('Loading Instagram marketing data for user:', userId);
-    fetch(`/api/instagram-marketing/${userId}`)
-        .then(response => response.json())
-        .then(data => {
-            updateInstagramDisplay(data);
-        })
-        .catch(error => {
-            console.error('Error loading Instagram marketing data:', error);
-        });
+async function loadInstagramMarketingData(userId) {
+    try {
+        console.log('Loading Instagram marketing data for user:', userId);
+        const response = await fetch(`/api/instagram-marketing/${userId}`);
+        
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error(`Error loading Instagram data (${response.status}):`, errorText);
+            throw new Error(`Failed to fetch Instagram data: ${response.status} ${response.statusText}`);
+        }
+        
+        const data = await response.json();
+        console.log('Received Instagram marketing data:', data);
+        
+        // Update Instagram marketing display
+        updateInstagramDisplay(data);
+        
+        return true;
+    } catch (error) {
+        console.error('Error loading Instagram marketing data:', error);
+        
+        // Find Instagram marketing section and add error message
+        const instagramSection = document.querySelector('.instagram-marketing');
+        if (instagramSection) {
+            const errorMsg = document.createElement('div');
+            errorMsg.className = 'error-message';
+            errorMsg.textContent = 'Error loading Instagram marketing data';
+            
+            // Remove any existing error messages
+            const existingErrors = instagramSection.querySelectorAll('.error-message');
+            existingErrors.forEach(el => el.remove());
+            
+            // Add the new error message
+            instagramSection.prepend(errorMsg);
+        }
+        
+        return false;
+    }
 }
 
 // Function to update Instagram marketing display
 function updateInstagramDisplay(data) {
-    const accountsElement = document.getElementById('accountsReached');
-    const leadsElement = document.getElementById('leadsConverted');
-    
-    if (accountsElement && leadsElement) {
-        accountsElement.textContent = data.accountsReached || 0;
-        leadsElement.textContent = data.leadsConverted || 0;
-    }
-    
-    // Update preferences list
-    const preferencesList = document.getElementById('instagramPreferencesList');
-    if (preferencesList && data.preferences) {
-        preferencesList.innerHTML = '';
+    try {
+        console.log('Updating Instagram display with data:', data);
         
-        if (data.preferences.length === 0) {
-            preferencesList.innerHTML = '<p>No preferences set.</p>';
-            return;
+        // Update accounts reached input
+        const accountsReachedInput = document.getElementById('accountsReached');
+        if (accountsReachedInput) {
+            accountsReachedInput.value = data.accountsReached || 0;
         }
         
-        data.preferences.forEach(pref => {
-            const li = document.createElement('li');
-            li.innerHTML = `
-                <div class="preference-item">
-                    <p>${pref.niche}</p>
-                    <small>Added: ${new Date(pref.timestamp).toLocaleString()}</small>
-                </div>
-            `;
-            preferencesList.appendChild(li);
-        });
-    }
-}
-
-// Setup UI event listeners
-function setupUIEventListeners(userId) {
-    // Add event listener for state toggle
-    const stateToggle = document.getElementById('stateToggle');
-    if (stateToggle) {
-        stateToggle.addEventListener('change', function(event) {
-            console.log('Toggle changed, new state:', event.target.checked ? 2 : 1);
-            const newState = event.target.checked ? 2 : 1;
-            updateWebsiteState(userId, newState);
-        });
-    }
-    
-    // Add save website details button event listener
-    const saveWebsiteDetailsBtn = document.getElementById('saveWebsiteDetails');
-    if (saveWebsiteDetailsBtn) {
-        saveWebsiteDetailsBtn.addEventListener('click', function() {
-            saveWebsiteDetails(userId);
-        });
-    }
-    
-    // Add preview URL input change listener
-    const websitePreviewUrlInput = document.getElementById('websitePreviewUrl');
-    if (websitePreviewUrlInput) {
-        websitePreviewUrlInput.addEventListener('input', updatePreviewImage);
-    }
-    
-    // Add event listener for email suggestion form
-    const suggestionForm = document.getElementById('suggestionForm');
-    if (suggestionForm) {
-        suggestionForm.addEventListener('submit', function(event) {
-            event.preventDefault();
-            submitSuggestion(userId);
-        });
-    }
-    
-    // Add event listener for website query form
-    const websiteQueryForm = document.getElementById('websiteQueryForm');
-    if (websiteQueryForm) {
-        websiteQueryForm.addEventListener('submit', function(event) {
-            event.preventDefault();
-            submitWebsiteQuery(userId);
-        });
-    }
-    
-    // Add event listener for website config form
-    const websiteConfigForm = document.getElementById('websiteConfigForm');
-    if (websiteConfigForm) {
-        websiteConfigForm.addEventListener('submit', function(event) {
-            event.preventDefault();
-            submitWebsiteConfig(userId);
-        });
+        // Update leads converted input
+        const leadsConvertedInput = document.getElementById('leadsConverted');
+        if (leadsConvertedInput) {
+            leadsConvertedInput.value = data.leadsConverted || 0;
+        }
+        
+        // Update niche selection if available
+        const nicheSelect = document.getElementById('instagramNiche');
+        if (nicheSelect && data.niche) {
+            // Select the option that matches the niche
+            const options = Array.from(nicheSelect.options);
+            const matchingOption = options.find(option => option.value === data.niche);
+            
+            if (matchingOption) {
+                nicheSelect.value = data.niche;
+            } else if (data.niche && data.niche.trim() !== '') {
+                // If the niche isn't in the options, try to add it
+                const newOption = document.createElement('option');
+                newOption.value = data.niche;
+                newOption.textContent = data.niche;
+                nicheSelect.appendChild(newOption);
+                nicheSelect.value = data.niche;
+            }
+        }
+        
+        // Update the niche preferences table if it exists
+        const nichePreferencesTableBody = document.querySelector('#nichePreferencesTable tbody');
+        if (nichePreferencesTableBody && data.preferences) {
+            nichePreferencesTableBody.innerHTML = '';
+            
+            if (data.preferences && data.preferences.length > 0) {
+                data.preferences.forEach(pref => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${pref.niche || 'Unknown'}</td>
+                        <td>${pref.priority || 'Medium'}</td>
+                        <td>${new Date(pref.timestamp).toLocaleString()}</td>
+                    `;
+                    nichePreferencesTableBody.appendChild(row);
+                });
+            } else {
+                const emptyRow = document.createElement('tr');
+                emptyRow.innerHTML = '<td colspan="3" class="text-center">No preferences set</td>';
+                nichePreferencesTableBody.appendChild(emptyRow);
+            }
+        }
+        
+        console.log('Instagram display updated successfully');
+    } catch (error) {
+        console.error('Error updating Instagram display:', error);
     }
 }
 
