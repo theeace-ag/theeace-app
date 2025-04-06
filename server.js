@@ -59,9 +59,38 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Redirect root to the index.html in the views folder
+// Route handlers for the main pages
 app.get('/', function(req, res) {
     res.sendFile(path.join(__dirname, 'public/views/index.html'));
+});
+
+app.get('/admin', function(req, res) {
+    res.sendFile(path.join(__dirname, 'public/views/admin.html'));
+});
+
+app.get('/admin.html', function(req, res) {
+    res.sendFile(path.join(__dirname, 'public/views/admin.html'));
+});
+
+app.get('/dashboard', function(req, res) {
+    res.sendFile(path.join(__dirname, 'public/views/dashboard.html'));
+});
+
+app.get('/dashboard.html', function(req, res) {
+    res.sendFile(path.join(__dirname, 'public/views/dashboard.html'));
+});
+
+app.get('/userContent', function(req, res) {
+    res.sendFile(path.join(__dirname, 'public/views/userContent.html'));
+});
+
+app.get('/userContent.html', function(req, res) {
+    res.sendFile(path.join(__dirname, 'public/views/userContent.html'));
+});
+
+// Redirect old paths to new paths
+app.get('/index.html', function(req, res) {
+    res.redirect('/');
 });
 
 // Update paths for API routes
