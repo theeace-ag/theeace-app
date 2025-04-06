@@ -8,7 +8,7 @@ window.onload = function() {
     const loggedInUser = localStorage.getItem('loggedInUser');
     if (loggedInUser) {
         // Redirect to our dashboard instead of external site
-        window.location.href = '/dashboard.html';
+        window.location.href = '/dashboard';
     }
 
     // Setup password visibility toggle
@@ -73,7 +73,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     }
                     
                     // Redirect to dashboard
-                    window.location.href = 'dashboard.html';
+                    window.location.href = '/dashboard';
                 } else {
                     showMessage('Login failed. Please check your credentials.', 'error');
                 }
@@ -92,7 +92,7 @@ document.addEventListener('DOMContentLoaded', function() {
     
     if (loggedInUser && window.location.pathname === '/') {
         // Auto-redirect to dashboard if already logged in
-        window.location.href = 'dashboard.html';
+        window.location.href = '/dashboard';
     }
 });
 

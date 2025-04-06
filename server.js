@@ -57,11 +57,31 @@ const upload = multer({ dest: 'uploads/' });
 app.use(cors());
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false }));
-app.use(express.static(path.join(__dirname, '.')));
+app.use(express.static(path.join(__dirname, 'public')));
 
-// Update all file paths to work with both local and Glitch environments
+// Redirect root to the index.html in the views folder
+app.get('/', function(req, res) {
+    res.sendFile(path.join(__dirname, 'public/views/index.html'));
+});
+
+// Update paths for API routes
+app.get('/admin', function(req, res) {
+    res.sendFile(path.join(__dirname, 'public/views/admin.html'));
+});
+
+app.get('/dashboard', function(req, res) {
+    res.sendFile(path.join(__dirname, 'public/views/dashboard.html'));
+});
+
+app.get('/userContent', function(req, res) {
+    res.sendFile(path.join(__dirname, 'public/views/userContent.html'));
+});
+
+// Update the data directory path for local and Glitch environments
 const isGlitch = process.env.PROJECT_DOMAIN !== undefined;
-const dataDir = isGlitch ? path.join(__dirname, '.data') : path.join(__dirname, 'data');
+const dataDir = isGlitch 
+    ? path.join(__dirname, '.data') 
+    : path.join(__dirname, 'server', 'data');
 
 // Define file paths
 const usersFilePath = path.join(dataDir, 'users.json');
@@ -73,17 +93,25 @@ const historicalFilePath = path.join(dataDir, 'historical.json');
 // Middleware
 app.use(express.static(path.join(__dirname, '.')));
 
-// Create necessary directories if they don't exist
+// Import utility functions
+// Update these paths if you refactor utility functions into separate files
+const { createDefaultUser } = require('./server/utils/create-user');
+
+// Make sure data directories exist
 const dirs = [
     path.join(__dirname, 'uploads'),
+    dataDir,
     path.join(dataDir, 'email-stats'),
     path.join(dataDir, 'metrics'),
-    path.join(dataDir, 'historical')
+    path.join(dataDir, 'historical'),
+    path.join(dataDir, 'logo-preferences'),
+    path.join(dataDir, 'instagram-marketing')
 ];
 
 dirs.forEach(dir => {
     if (!fs.existsSync(dir)) {
         fs.mkdirSync(dir, { recursive: true });
+        console.log(`Created directory: ${dir}`);
     }
 });
 

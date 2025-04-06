@@ -24,6 +24,36 @@ Real-time updates include:
 - Website configuration changes
 - Logo preference updates
 
+## File Structure
+
+The project is organized into the following structure:
+
+```
+theeace-login-portal/
+│
+├── public/                # Static client-side files
+│   ├── css/               # CSS stylesheets
+│   ├── js/                # Client-side JavaScript
+│   ├── views/             # HTML files
+│   └── img/               # Images folder
+│
+├── server/                # Server-side code
+│   ├── config/            # Configuration files
+│   ├── data/              # Data storage (auto-created)
+│   ├── routes/            # API routes in future
+│   └── utils/             # Utility functions
+│
+├── docs/                  # Documentation
+│
+├── .dockerignore          # Docker ignore file
+├── .gitignore             # Git ignore file
+├── fly.toml               # Fly.io configuration
+├── package.json           # NPM package config
+├── package-lock.json      # NPM dependencies lockfile
+├── README.md              # Project README
+└── server.js              # Main server entry point
+```
+
 ## Setup and Installation
 
 1. Clone the repository
@@ -41,10 +71,10 @@ Real-time updates include:
 This application can be deployed to various platforms:
 
 - **Local deployment**: Run `npm start` to start the server locally
-- **Glitch.com**: See [GLITCH_INSTRUCTIONS.md](GLITCH_INSTRUCTIONS.md) for detailed steps
-- **Fly.io**: See [DEPLOYMENT.md](DEPLOYMENT.md) for detailed steps
+- **Glitch.com**: See [docs/GLITCH_INSTRUCTIONS.md](docs/GLITCH_INSTRUCTIONS.md) for detailed steps
+- **Fly.io**: See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) for detailed steps
 
-For more deployment options without requiring a credit card, see [DEPLOYMENT_ALTERNATIVE.md](DEPLOYMENT_ALTERNATIVE.md).
+For more deployment options without requiring a credit card, see [docs/DEPLOYMENT_ALTERNATIVE.md](docs/DEPLOYMENT_ALTERNATIVE.md).
 
 ## Default Login
 
@@ -61,17 +91,17 @@ If users or data aren't showing up properly:
 
 1. Run the diagnostics script:
    ```
-   node debug-data-paths.js
+   node server/utils/debug-data-paths.js
    ```
 
 2. Create a default admin user with sample data:
    ```
-   node create-user.js
+   node server/utils/create-user.js
    ```
 
 3. Restart the server:
    ```
-   node server.js
+   npm start
    ```
 
 ## CSV Format
@@ -81,13 +111,4 @@ The bulk import feature accepts CSV files in the following format:
 username,userId,passkey
 user1,12345,password1
 user2,67890,password2
-```
-
-## File Structure
-
-- `server.js`: Main server file
-- `admin.html`: Admin portal interface
-- `admin.js`: Admin functionality
-- `script.js`: Login functionality
-- `styles.css`: Styling
-- `users.json`: User database 
+``` 
