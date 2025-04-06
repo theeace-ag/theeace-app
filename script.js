@@ -28,57 +28,94 @@ window.onload = function() {
     }
 };
 
-async function handleLogin(event) {
-    event.preventDefault();
+document.addEventListener('DOMContentLoaded', function() {
+    const loginForm = document.getElementById('loginForm');
     
-    // Get form elements
-    const username = document.getElementById('username').value.trim();
-    const userId = document.getElementById('userId').value.trim();
-    const passkey = document.getElementById('passkey').value;
-    const loginBtn = document.querySelector('.sign-in-btn');
-    const errorMessage = document.getElementById('error-message');
-    
-    // Clear previous error message
-    errorMessage.textContent = '';
-    
-    // Show loading animation
-    loginBtn.classList.add('loading');
-    
-    try {
-        // Call backend API
-        const response = await fetch(`${API_URL}/api/login`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ username, userId, passkey })
+    if (loginForm) {
+        loginForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const username = document.getElementById('username').value;
+            const userId = document.getElementById('userId').value;
+            const passkey = document.getElementById('passkey').value;
+            
+            if (!username || !userId || !passkey) {
+                showMessage('Please fill in all fields', 'error');
+                return;
+            }
+            
+            // Show loading state
+            const loginButton = document.querySelector('#loginForm button[type="submit"]');
+            const originalText = loginButton.textContent;
+            loginButton.disabled = true;
+            loginButton.textContent = 'Logging in...';
+            
+            fetch('/api/login', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ username, userId, passkey })
+            })
+            .then(response => response.json())
+            .then(data => {
+                loginButton.disabled = false;
+                loginButton.textContent = originalText;
+                
+                if (data.message === 'Login successful') {
+                    // Store user data in localStorage
+                    localStorage.setItem('loggedInUser', JSON.stringify(data.user));
+                    localStorage.setItem('userId', data.user.userId); // Add this for dashboard.js
+                    
+                    // Initialize socket connection with the user ID
+                    if (window.socketUtil) {
+                        window.socketUtil.updateUserId(data.user.userId);
+                    }
+                    
+                    // Redirect to dashboard
+                    window.location.href = 'dashboard.html';
+                } else {
+                    showMessage('Login failed. Please check your credentials.', 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error during login:', error);
+                loginButton.disabled = false;
+                loginButton.textContent = originalText;
+                showMessage('An error occurred. Please try again.', 'error');
+            });
         });
-        
-        const data = await response.json();
-        
-        if (!response.ok) {
-            throw new Error(data.message || 'Login failed');
-        }
-        
-        // Save login state and user data
-        localStorage.setItem('loggedInUser', JSON.stringify(data.user));
-        localStorage.setItem('userId', data.user.userId); // Add this for dashboard.js
-        
-        // Redirect to our dashboard
-        window.location.href = '/dashboard.html';
-        
-    } catch (error) {
-        // Handle error case
-        errorMessage.textContent = error.message || 'Invalid credentials. Please try again.';
-        loginBtn.classList.remove('loading');
     }
+    
+    // Check if user is already logged in
+    const loggedInUser = localStorage.getItem('loggedInUser');
+    
+    if (loggedInUser && window.location.pathname === '/') {
+        // Auto-redirect to dashboard if already logged in
+        window.location.href = 'dashboard.html';
+    }
+});
+
+// Function to show message
+function showMessage(message, type = 'info') {
+    const messageContainer = document.getElementById('message');
+    if (!messageContainer) return;
+    
+    messageContainer.textContent = message;
+    messageContainer.className = `message ${type}`;
+    messageContainer.style.display = 'block';
+    
+    // Hide message after 3 seconds
+    setTimeout(() => {
+        messageContainer.style.display = 'none';
+    }, 3000);
 }
 
 // Function to logout
 function logout() {
     localStorage.removeItem('loggedInUser');
     localStorage.removeItem('userId');
-    window.location.href = 'index.html';
+    window.location.href = '/';
 }
 
 function deleteCookiesAndLogout() {

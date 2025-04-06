@@ -7,11 +7,50 @@ const dotenv = require('dotenv');
 const { parse } = require('csv-parse');
 const cors = require('cors');
 const nodemailer = require('nodemailer');
+const http = require('http');
+const socketIo = require('socket.io');
 
 // Load environment variables
 dotenv.config();
 
 const app = express();
+const server = http.createServer(app);
+const io = socketIo(server, {
+  cors: {
+    origin: "*",
+    methods: ["GET", "POST"],
+    allowedHeaders: ["*"],
+    credentials: true
+  }
+});
+
+// Socket.IO connection handling
+io.on('connection', (socket) => {
+  console.log('New client connected, ID:', socket.id);
+  
+  socket.on('join', (userId) => {
+    if (userId) {
+      console.log(`User ${userId} joined room: ${userId}`);
+      socket.join(userId);
+    }
+  });
+
+  socket.on('disconnect', () => {
+    console.log('Client disconnected');
+  });
+});
+
+// Socket.IO notification function
+function notifyClients(event, data, roomId = null) {
+  if (roomId) {
+    console.log(`Emitting ${event} to room ${roomId}:`, data);
+    io.to(roomId).emit(event, data);
+  } else {
+    console.log(`Broadcasting ${event} to all clients:`, data);
+    io.emit(event, data);
+  }
+}
+
 const upload = multer({ dest: 'uploads/' });
 
 // Middleware
@@ -348,6 +387,9 @@ app.post('/api/users', (req, res) => {
             console.error('Error creating user data files:', initError);
             // We'll still return success since the user was created, but log the error
         }
+        
+        // Notify connected clients about the new user
+        notifyClients('user-created', { userId, username });
         
         res.status(201).json(newUser);
     } catch (error) {
@@ -884,6 +926,9 @@ app.post('/api/email-marketing/:userId', async (req, res) => {
         metrics.email_stats = stats;
         console.log('Updating metrics file with email stats:', metrics);
         fs.writeFileSync(metricsPath, JSON.stringify(metrics, null, 2));
+        
+        // Notify connected clients about the updated email stats
+        notifyClients('email-stats-updated', stats, userId);
         
         // Send email notification
         const users = readUsers();
@@ -1635,6 +1680,10 @@ app.post('/api/instagram-marketing/:userId', (req, res) => {
         
         // Save data
         fs.writeFileSync(filePath, JSON.stringify(data, null, 2));
+        
+        // Notify connected clients about the updated data
+        notifyClients('instagram-data-updated', data, userId);
+        
         res.json(data);
     } catch (error) {
         console.error('Error updating Instagram marketing data:', error);
@@ -1751,7 +1800,7 @@ process.on('SIGTERM', () => {
 
 // Listen on all interfaces (0.0.0.0) to make the server accessible externally
 const PORT = process.env.PORT || 8080;
-app.listen(PORT, '0.0.0.0', () => {
+server.listen(PORT, '0.0.0.0', () => {
     console.log(`Server running on port ${PORT}`);
     console.log(`Access locally via: http://localhost:${PORT}`);
     console.log(`For access from other devices use your computer's IP address`);
