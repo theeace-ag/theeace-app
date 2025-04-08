@@ -15,7 +15,10 @@ const app = express();
 const upload = multer({ dest: 'uploads/' });
 
 // Middleware
-app.use(cors());
+app.use(cors({
+    origin: ['http://localhost:5000', 'https://theeace-login-portal.onrender.com', 'https://theeace-login-portal.der.com'],
+    credentials: true
+}));
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(express.static(path.join(__dirname, 'public')));
@@ -365,16 +368,26 @@ app.post('/api/users/bulk-import', upload.single('csv'), (req, res) => {
 // Login endpoint
 app.post('/api/login', (req, res) => {
     try {
-        const { username, userId, passkey } = req.body;
+        const { username, userId, passkey, password } = req.body;
         const users = readUsers();
         
-        const user = users.find(u => 
+        // First try to find user by userId and passkey
+        let user = users.find(u => 
             u.username === username && 
             u.userId === userId && 
             u.passkey === passkey
         );
+
+        // If not found, try to find by username and password
+        if (!user) {
+            user = users.find(u => 
+                u.username === username && 
+                (u.password === password || u.passkey === password)
+            );
+        }
         
         if (!user) {
+            console.log('Login failed for:', { username, userId });
             return res.status(401).json({ message: 'Invalid credentials' });
         }
         
@@ -382,9 +395,13 @@ app.post('/api/login', (req, res) => {
         user.lastLogin = new Date().toISOString();
         writeUsers(users);
         
+        // Add debug logging
+        console.log('Login successful for user:', username);
+        
         res.json({ message: 'Login successful', user });
     } catch (error) {
-        res.status(500).json({ message: 'Error during login' });
+        console.error('Login error:', error);
+        res.status(500).json({ message: 'Error during login', error: error.message });
     }
 });
 
