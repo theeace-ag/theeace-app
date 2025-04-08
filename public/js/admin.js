@@ -1,3 +1,4 @@
+// API URL configuration
 const API_URL = ''; // Use relative paths to current server
 
 // Load users when the page loads
@@ -6,14 +7,16 @@ window.onload = function() {
 };
 
 // Add Single User
-document.getElementById('addUserForm').addEventListener('submit', async function(e) {
+document.getElementById('addUserForm').addEventListener('submit', async (e) => {
     e.preventDefault();
-    
-    const username = document.getElementById('newUsername').value;
-    const userId = document.getElementById('newUserId').value;
+    const username = document.getElementById('newUsername').value.trim();
+    const userId = document.getElementById('newUserId').value.trim();
     const passkey = document.getElementById('newPasskey').value;
+    const messageDiv = document.getElementById('singleUserMessage');
+    const submitBtn = e.target.querySelector('.sign-in-btn');
     
     try {
+        submitBtn.classList.add('loading');
         const response = await fetch(`${API_URL}/api/users`, {
             method: 'POST',
             headers: {
@@ -25,22 +28,74 @@ document.getElementById('addUserForm').addEventListener('submit', async function
         const data = await response.json();
         
         if (response.ok) {
-            document.getElementById('singleUserMessage').innerHTML = `
-                <div class="success-message">User added successfully!</div>
-            `;
-            document.getElementById('addUserForm').reset();
+            messageDiv.className = 'success-message';
+            messageDiv.textContent = 'User added successfully!';
             loadUsers(); // Refresh user list
+            e.target.reset();
         } else {
-            document.getElementById('singleUserMessage').innerHTML = `
-                <div class="error-message">${data.message}</div>
-            `;
+            throw new Error(data.message);
         }
     } catch (error) {
-        document.getElementById('singleUserMessage').innerHTML = `
-            <div class="error-message">Error adding user: ${error.message}</div>
-        `;
+        messageDiv.className = 'error-message';
+        messageDiv.textContent = error.message || 'Error adding user';
+    } finally {
+        submitBtn.classList.remove('loading');
     }
 });
+
+// Upload CSV
+async function uploadCSV() {
+    const fileInput = document.getElementById('csvFile');
+    const messageDiv = document.getElementById('bulkImportMessage');
+    const uploadBtn = document.querySelector('.file-upload .sign-in-btn');
+    
+    if (!fileInput.files[0]) {
+        messageDiv.className = 'error-message';
+        messageDiv.textContent = 'Please select a CSV file';
+        return;
+    }
+    
+    const formData = new FormData();
+    formData.append('csv', fileInput.files[0]);
+    
+    try {
+        uploadBtn.classList.add('loading');
+        const response = await fetch(`${API_URL}/api/users/bulk-import`, {
+            method: 'POST',
+            body: formData
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+            const successCount = data.results.filter(r => r.success).length;
+            const failCount = data.results.filter(r => !r.success).length;
+            
+            messageDiv.className = 'success-message';
+            messageDiv.innerHTML = `Import completed:<br>
+                - ${successCount} users imported successfully<br>
+                ${failCount > 0 ? `- ${failCount} users failed to import` : ''}`;
+            
+            if (failCount > 0) {
+                const failedUsers = data.results
+                    .filter(r => !r.success)
+                    .map(r => `${r.username}: ${r.error}`)
+                    .join('<br>');
+                messageDiv.innerHTML += `<br><br>Failed imports:<br>${failedUsers}`;
+            }
+            
+            loadUsers(); // Refresh user list
+            fileInput.value = '';
+        } else {
+            throw new Error(data.message);
+        }
+    } catch (error) {
+        messageDiv.className = 'error-message';
+        messageDiv.textContent = error.message || 'Error importing users';
+    } finally {
+        uploadBtn.classList.remove('loading');
+    }
+}
 
 // Load Users
 async function loadUsers() {
@@ -63,113 +118,24 @@ async function loadUsers() {
 }
 
 // Setup drag and drop for CSV file
-const csvFileInput = document.getElementById('csvFile');
-const csvFileLabel = document.querySelector('.file-label');
+const dropZone = document.querySelector('.file-label');
+const fileInput = document.getElementById('csvFile');
 
-['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
-    csvFileLabel.addEventListener(eventName, preventDefaults, false);
-});
-
-function preventDefaults(e) {
+dropZone.addEventListener('dragover', (e) => {
     e.preventDefault();
-    e.stopPropagation();
-}
-
-['dragenter', 'dragover'].forEach(eventName => {
-    csvFileLabel.addEventListener(eventName, highlight, false);
+    dropZone.style.background = 'rgba(255, 255, 255, 0.1)';
 });
 
-['dragleave', 'drop'].forEach(eventName => {
-    csvFileLabel.addEventListener(eventName, unhighlight, false);
+dropZone.addEventListener('dragleave', () => {
+    dropZone.style.background = 'rgba(255, 255, 255, 0.05)';
 });
 
-function highlight(e) {
-    csvFileLabel.classList.add('highlight');
-}
-
-function unhighlight(e) {
-    csvFileLabel.classList.remove('highlight');
-}
-
-csvFileLabel.addEventListener('drop', handleDrop, false);
-
-function handleDrop(e) {
-    const dt = e.dataTransfer;
-    const files = dt.files;
-    csvFileInput.files = files;
-    updateFileLabel(files[0]);
-}
-
-csvFileInput.addEventListener('change', function(e) {
-    updateFileLabel(this.files[0]);
-});
-
-function updateFileLabel(file) {
-    if (file) {
-        csvFileLabel.textContent = file.name;
-    } else {
-        csvFileLabel.textContent = 'Choose CSV file or drag & drop here';
-    }
-}
-
-// Upload CSV
-async function uploadCSV() {
-    const fileInput = document.getElementById('csvFile');
-    const messageDiv = document.getElementById('bulkImportMessage');
+dropZone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    dropZone.style.background = 'rgba(255, 255, 255, 0.05)';
     
-    if (!fileInput.files.length) {
-        messageDiv.innerHTML = `
-            <div class="error-message">Please select a CSV file</div>
-        `;
-        return;
+    if (e.dataTransfer.files.length) {
+        fileInput.files = e.dataTransfer.files;
+        dropZone.textContent = e.dataTransfer.files[0].name;
     }
-    
-    const formData = new FormData();
-    formData.append('csv', fileInput.files[0]);
-    
-    try {
-        const response = await fetch(`${API_URL}/api/users/bulk-import`, {
-            method: 'POST',
-            body: formData
-        });
-        
-        const data = await response.json();
-        
-        if (response.ok) {
-            const results = data.results;
-            const successful = results.filter(r => r.success).length;
-            const failed = results.filter(r => !r.success).length;
-            
-            messageDiv.innerHTML = `
-                <div class="success-message">
-                    Import completed:<br>
-                    ${successful} users added successfully<br>
-                    ${failed} users failed
-                </div>
-                ${failed > 0 ? `
-                    <div class="error-message">
-                        Failed entries:<br>
-                        ${results.filter(r => !r.success)
-                            .map(r => `${r.username}: ${r.error}`)
-                            .join('<br>')}
-                    </div>
-                ` : ''}
-            `;
-            
-            // Reset file input and label
-            fileInput.value = '';
-            csvFileLabel.textContent = 'Choose CSV file or drag & drop here';
-            
-            // Refresh user list
-            loadUsers();
-        } else {
-            messageDiv.innerHTML = `
-                <div class="error-message">${data.message}</div>
-            `;
-        }
-    } catch (error) {
-        messageDiv.innerHTML = `
-            <div class="error-message">Error uploading CSV: ${error.message}</div>
-        `;
-    }
-} 
+}); 

@@ -21,6 +21,11 @@ app.use(bodyParser.urlencoded({ extended: false }));
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.static(path.join(__dirname, '.')));
 
+// Add a specific route for admin.html
+app.get('/admin', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'admin.html'));
+});
+
 // Define file paths
 const usersFilePath = path.join(__dirname, 'users.json');
 const widgetsFilePath = path.join(__dirname, 'widgets.json');
