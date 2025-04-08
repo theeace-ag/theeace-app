@@ -1,10 +1,9 @@
 // API URL configuration
 const API_URL = ''; // Use relative paths to current server
 
-// Load users when the page loads
-window.onload = function() {
+document.addEventListener('DOMContentLoaded', () => {
     loadUsers();
-};
+});
 
 // Add Single User
 document.getElementById('addUserForm').addEventListener('submit', async (e) => {
@@ -102,18 +101,57 @@ async function loadUsers() {
     try {
         const response = await fetch(`${API_URL}/api/users`);
         const users = await response.json();
-        
-        const tbody = document.getElementById('userList');
-        tbody.innerHTML = users.map(user => `
-            <tr>
-                <td>${user.username}</td>
-                <td>${user.userId}</td>
-                <td>${new Date(user.createdAt).toLocaleString()}</td>
-                <td>${user.lastLogin ? new Date(user.lastLogin).toLocaleString() : 'Never'}</td>
-            </tr>
-        `).join('');
+        displayUsers(users);
     } catch (error) {
         console.error('Error loading users:', error);
+    }
+}
+
+function displayUsers(users) {
+    const userList = document.getElementById('userList');
+    userList.innerHTML = '';
+
+    users.forEach(user => {
+        const userElement = document.createElement('div');
+        userElement.className = 'user-item';
+        userElement.innerHTML = `
+            <div class="user-info">
+                <strong>${user.username}</strong> (ID: ${user.userId})
+                <br>
+                <small>Created: ${new Date(user.createdAt).toLocaleString()}</small>
+                ${user.lastLogin ? `<br><small>Last Login: ${new Date(user.lastLogin).toLocaleString()}</small>` : ''}
+            </div>
+            <div class="user-actions">
+                <button onclick="editUser('${user.userId}')">Edit</button>
+                <button class="delete-btn" onclick="deleteUser('${user.userId}')">Delete</button>
+            </div>
+        `;
+        userList.appendChild(userElement);
+    });
+}
+
+async function editUser(userId) {
+    // Implement edit functionality
+    console.log('Edit user:', userId);
+}
+
+async function deleteUser(userId) {
+    if (confirm('Are you sure you want to delete this user?')) {
+        try {
+            const response = await fetch(`${API_URL}/api/users/${userId}`, {
+                method: 'DELETE'
+            });
+            
+            if (response.ok) {
+                loadUsers(); // Reload the user list
+            } else {
+                const error = await response.json();
+                alert(error.message || 'Error deleting user');
+            }
+        } catch (error) {
+            console.error('Error deleting user:', error);
+            alert('Error deleting user');
+        }
     }
 }
 
