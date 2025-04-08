@@ -589,16 +589,11 @@ async function loadWebsiteConfig() {
                 form.elements.brandName.value = config.brandName || '';
                 form.elements.websiteType.value = config.websiteType || '';
                 
-                // Handle color scheme data
-                const colorScheme = config.colorScheme || {
-                    primary: '#000000',
-                    secondary: '#ffffff',
-                    tertiary: '#cccccc'
-                };
-                
-                form.elements.primaryColor.value = colorScheme.primary;
-                form.elements.secondaryColor.value = colorScheme.secondary;
-                form.elements.tertiaryColor.value = colorScheme.tertiary;
+                if (config.colorScheme) {
+                    form.elements.primaryColor.value = config.colorScheme.primary || '#000000';
+                    form.elements.secondaryColor.value = config.colorScheme.secondary || '#ffffff';
+                    form.elements.tertiaryColor.value = config.colorScheme.tertiary || '#cccccc';
+                }
                 
                 form.elements.referenceWebsite.value = config.referenceWebsite || '';
             }
@@ -708,33 +703,24 @@ function showPopupLightbox() {
     });
 }
 
-// Handle website configuration form submission
-document.getElementById('websiteConfigForm').addEventListener('submit', async (event) => {
-    event.preventDefault();
+// Event Listeners
+document.getElementById('websiteConfigForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    const userData = JSON.parse(localStorage.getItem('loggedInUser'));
+    if (!userData) return;
     
     try {
-    const userData = JSON.parse(localStorage.getItem('loggedInUser'));
-        if (!userData || !userData.userId) {
-            throw new Error('User not logged in');
-        }
-        
-        // Get current color values
-        const primaryColor = document.getElementById('primaryColor').value;
-        const secondaryColor = document.getElementById('secondaryColor').value;
-        const tertiaryColor = document.getElementById('tertiaryColor').value;
-        
         const formData = {
             brandName: document.getElementById('brandName').value,
             websiteType: document.getElementById('websiteType').value,
-            colorScheme: {
-                primary: primaryColor,
-                secondary: secondaryColor,
-                tertiary: tertiaryColor
+            colors: {
+                primary: document.getElementById('primaryColor').value,
+                secondary: document.getElementById('secondaryColor').value,
+                tertiary: document.getElementById('tertiaryColor').value
             },
             referenceWebsite: document.getElementById('referenceWebsite').value
         };
-        
-        console.log('Submitting color scheme:', formData.colorScheme);
         
         const response = await fetch(`/api/website-config/${userData.userId}`, {
             method: 'POST',
@@ -748,250 +734,20 @@ document.getElementById('websiteConfigForm').addEventListener('submit', async (e
             throw new Error('Failed to save website configuration');
         }
         
-        const updatedConfig = await response.json();
-        console.log('Updated config received:', updatedConfig);
+        showPopupLightbox();
         
-        // Notify userContent iframe of the update
-        const userContentIframe = document.getElementById('userContentIframe');
-        if (userContentIframe && userContentIframe.contentWindow) {
-            console.log('Sending color update to userContent:', formData.colorScheme);
-            userContentIframe.contentWindow.postMessage({
-                type: 'websiteConfigUpdate',
-                colorScheme: formData.colorScheme
-            }, '*');
-        }
-        
-        // Show success message
-        showPopupLightbox('Website configuration updated successfully!');
-        
-        // Reload the website config to ensure consistency
-        await loadWebsiteConfig();
+        // Scroll to email marketing section after a delay
+        setTimeout(() => {
+            const emailSection = document.querySelector('.email-marketing-widget');
+            if (emailSection) {
+                emailSection.scrollIntoView({ behavior: 'smooth' });
+            }
+        }, 2000);
         
     } catch (error) {
         console.error('Error saving website configuration:', error);
-        showPopupLightbox('Error saving website configuration: ' + error.message);
     }
 });
-
-// Add color change listeners to update userContent in real-time
-// First remove any existing listeners to avoid duplicates
-const primaryColorInput = document.getElementById('primaryColor');
-const secondaryColorInput = document.getElementById('secondaryColor');
-const tertiaryColorInput = document.getElementById('tertiaryColor');
-
-if (primaryColorInput) {
-    // Remove previous listeners and add a new one
-    primaryColorInput.removeEventListener('input', updateUserContentColors);
-    primaryColorInput.addEventListener('input', updateUserContentColors);
-    console.log('Updated event listener on primaryColor input');
-}
-
-if (secondaryColorInput) {
-    secondaryColorInput.removeEventListener('input', updateUserContentColors);
-    secondaryColorInput.addEventListener('input', updateUserContentColors);
-    console.log('Updated event listener on secondaryColor input');
-}
-
-if (tertiaryColorInput) {
-    tertiaryColorInput.removeEventListener('input', updateUserContentColors);
-    tertiaryColorInput.addEventListener('input', updateUserContentColors);
-    console.log('Updated event listener on tertiaryColor input');
-}
-
-function updateUserContentColors() {
-    const userContentSection = document.getElementById('userContent');
-    if (userContentSection) {
-        const primaryInput = document.getElementById('primaryColor');
-        const secondaryInput = document.getElementById('secondaryColor');
-        const tertiaryInput = document.getElementById('tertiaryColor');
-
-        // Validate hex color format
-        const isValidHex = (color) => /^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/.test(color);
-
-        // Only update if all colors are valid hex
-        if (isValidHex(primaryInput.value) && 
-            isValidHex(secondaryInput.value) && 
-            isValidHex(tertiaryInput.value)) {
-            
-            const colorScheme = {
-                primary: primaryInput.value,
-                secondary: secondaryInput.value,
-                tertiary: tertiaryInput.value
-            };
-            
-            console.log('Applying valid color update to userContent section:', colorScheme);
-            
-            // Apply colors to root variables
-            const root = document.documentElement;
-            root.style.setProperty('--primary-color', colorScheme.primary);
-            root.style.setProperty('--secondary-color', colorScheme.secondary);
-            root.style.setProperty('--tertiary-color', colorScheme.tertiary);
-            
-            // Update color history
-            updateColorHistoryTable(colorScheme);
-
-            // Send update to userContent iframe if it exists
-            const userContentIframe = document.getElementById('userContentIframe');
-            if (userContentIframe && userContentIframe.contentWindow) {
-                userContentIframe.contentWindow.postMessage({
-                    type: 'websiteConfigUpdate',
-                    colorScheme: colorScheme
-                }, '*');
-            }
-        } else {
-            console.warn('Invalid hex color format detected');
-        }
-    } else {
-        console.error('userContent section not found');
-    }
-}
-
-// Add input validation and formatting
-function setupColorInput(input) {
-    input.addEventListener('input', function(e) {
-        let value = e.target.value.trim();
-        
-        // Ensure # prefix
-        if (!value.startsWith('#')) {
-            value = '#' + value;
-        }
-        
-        // Remove any non-hex characters
-        value = value.replace(/[^#A-Fa-f0-9]/g, '');
-        
-        // Limit length
-        if (value.length > 7) {
-            value = value.slice(0, 7);
-        }
-        
-        // Update input value
-        e.target.value = value;
-        
-        // Check validity
-        const isValid = /^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/.test(value);
-        e.target.setCustomValidity(isValid ? '' : 'Please enter a valid hex color (e.g., #000000)');
-        
-        if (isValid) {
-            // Create a small color preview next to the input
-            let preview = input.parentElement.querySelector('.color-preview');
-            if (!preview) {
-                preview = document.createElement('div');
-                preview.className = 'color-preview';
-                preview.style.cssText = `
-                    width: 24px;
-                    height: 24px;
-                    border-radius: 4px;
-                    border: 1px solid var(--border-color);
-                    position: absolute;
-                    right: 8px;
-                    top: 50%;
-                    transform: translateY(-50%);
-                `;
-                input.parentElement.style.position = 'relative';
-                input.parentElement.appendChild(preview);
-                input.style.paddingRight = '40px';
-            }
-            preview.style.backgroundColor = value;
-            
-            // Update colors if valid
-            updateUserContentColors();
-        }
-    });
-}
-
-// Initialize color inputs on page load
-document.addEventListener('DOMContentLoaded', () => {
-    const colorInputs = [
-        document.getElementById('primaryColor'),
-        document.getElementById('secondaryColor'),
-        document.getElementById('tertiaryColor')
-    ];
-    
-    colorInputs.forEach(input => {
-        if (input) {
-            setupColorInput(input);
-            // Trigger input event to set up initial color preview
-            input.dispatchEvent(new Event('input'));
-        }
-    });
-});
-
-// Function to update color history table
-function updateColorHistoryTable(colorScheme) {
-    // Get or create the color history array from localStorage
-    let colorHistory = JSON.parse(localStorage.getItem('colorHistory') || '[]');
-    
-    // Add new entry with timestamp
-    colorHistory.push({
-        timestamp: new Date().toLocaleString(),
-        ...colorScheme
-    });
-    
-    // Limit to 10 entries
-    if (colorHistory.length > 10) {
-        colorHistory = colorHistory.slice(-10);
-    }
-    
-    // Save back to localStorage
-    localStorage.setItem('colorHistory', JSON.stringify(colorHistory));
-    
-    // Find or create color history section
-    let colorHistorySection = document.getElementById('colorHistorySection');
-    
-    if (!colorHistorySection) {
-        // Get the userContent section
-        const userContentSection = document.getElementById('userContent');
-        if (!userContentSection) return;
-        
-        // Create the section
-        colorHistorySection = document.createElement('div');
-        colorHistorySection.id = 'colorHistorySection';
-        colorHistorySection.className = 'section';
-        colorHistorySection.innerHTML = `
-            <div class="widget-header">
-                <h2>Color Scheme History</h2>
-                <p class="subtitle">Track your color scheme changes</p>
-            </div>
-            <div class="table-responsive">
-                <table class="table table-bordered table-striped">
-                    <thead>
-                        <tr>
-                            <th>Timestamp</th>
-                            <th>Primary Color</th>
-                            <th>Secondary Color</th>
-                            <th>Tertiary Color</th>
-                        </tr>
-                    </thead>
-                    <tbody id="colorHistoryTableBody">
-                    </tbody>
-                </table>
-            </div>
-        `;
-        
-        userContentSection.appendChild(colorHistorySection);
-    }
-    
-    // Update table with history entries
-    const tableBody = document.getElementById('colorHistoryTableBody');
-    if (tableBody) {
-        tableBody.innerHTML = '';
-        
-        // Add entries in reverse order (newest first)
-        colorHistory.slice().reverse().forEach(entry => {
-            const row = document.createElement('tr');
-            
-            // Create color sample cells
-            row.innerHTML = `
-                <td>${entry.timestamp}</td>
-                <td><span style="display:inline-block; width:20px; height:20px; background-color:${entry.primary}; border:1px solid #ccc; border-radius:3px; margin-right:10px;"></span> ${entry.primary}</td>
-                <td><span style="display:inline-block; width:20px; height:20px; background-color:${entry.secondary}; border:1px solid #ccc; border-radius:3px; margin-right:10px;"></span> ${entry.secondary}</td>
-                <td><span style="display:inline-block; width:20px; height:20px; background-color:${entry.tertiary}; border:1px solid #ccc; border-radius:3px; margin-right:10px;"></span> ${entry.tertiary}</td>
-            `;
-            
-            tableBody.appendChild(row);
-        });
-    }
-}
 
 document.getElementById('websiteQueryForm').addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -1505,37 +1261,5 @@ window.addEventListener('message', function(event) {
         // Handle legacy format for backward compatibility
         console.log('Meetings data updated (legacy format), reloading data...');
         loadUpcomingMeetings();
-    }
-});
-
-// Add event listeners to color inputs
-document.addEventListener('DOMContentLoaded', function() {
-    // Add input event listeners to the color inputs
-    const primaryColorInput = document.getElementById('primaryColor');
-    const secondaryColorInput = document.getElementById('secondaryColor');
-    const tertiaryColorInput = document.getElementById('tertiaryColor');
-    
-    if (primaryColorInput) {
-        primaryColorInput.addEventListener('input', updateUserContentColors);
-        console.log('Added event listener to primaryColor input');
-    }
-    
-    if (secondaryColorInput) {
-        secondaryColorInput.addEventListener('input', updateUserContentColors);
-        console.log('Added event listener to secondaryColor input');
-    }
-    
-    if (tertiaryColorInput) {
-        tertiaryColorInput.addEventListener('input', updateUserContentColors);
-        console.log('Added event listener to tertiaryColor input');
-    }
-    
-    // Handle website config form submission
-    const websiteConfigForm = document.getElementById('websiteConfigForm');
-    if (websiteConfigForm) {
-        websiteConfigForm.addEventListener('submit', function(event) {
-            event.preventDefault();
-            saveWebsiteConfig();
-        });
     }
 }); 

@@ -1,9 +1,9 @@
 {
   "ayush": {
-    "logoType": "minimalist",
-    "timestamp": "2025-04-05T07:30:14.314Z",
-    "noteText": "User selected logo type: minimalist",
-    "lastUpdated": "2025-04-05T07:30:14.317Z",
+    "logoType": "vintage",
+    "timestamp": "2025-04-07T06:59:27.816Z",
+    "noteText": "User selected logo type: vintage",
+    "lastUpdated": "2025-04-07T06:59:27.821Z",
     "notes": [
       {
         "timestamp": "2025-04-05T06:35:33.793Z",
@@ -28,6 +28,10 @@
       {
         "timestamp": "2025-04-05T07:30:14.317Z",
         "text": "User selected logo type: minimalist"
+      },
+      {
+        "timestamp": "2025-04-07T06:59:27.821Z",
+        "text": "User selected logo type: vintage"
       }
     ]
   },

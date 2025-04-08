@@ -60,33 +60,15 @@
                                     <div class="color-inputs">
                                         <div class="color-input">
                                             <label for="primaryColor">Primary</label>
-                                            <input type="text" 
-                                                   id="primaryColor" 
-                                                   name="primaryColor" 
-                                                   pattern="^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$"
-                                                   placeholder="#000000" 
-                                                   value="#000000"
-                                                   required>
+                                            <input type="color" id="primaryColor" name="primaryColor" required>
                                         </div>
                                         <div class="color-input">
                                             <label for="secondaryColor">Secondary</label>
-                                            <input type="text" 
-                                                   id="secondaryColor" 
-                                                   name="secondaryColor" 
-                                                   pattern="^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$"
-                                                   placeholder="#ffffff" 
-                                                   value="#ffffff"
-                                                   required>
+                                            <input type="color" id="secondaryColor" name="secondaryColor" required>
                                         </div>
                                         <div class="color-input">
                                             <label for="tertiaryColor">Tertiary</label>
-                                            <input type="text" 
-                                                   id="tertiaryColor" 
-                                                   name="tertiaryColor" 
-                                                   pattern="^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$"
-                                                   placeholder="#cccccc" 
-                                                   value="#cccccc"
-                                                   required>
+                                            <input type="color" id="tertiaryColor" name="tertiaryColor" required>
                                         </div>
                                     </div>
                                 </div>
@@ -315,9 +297,5 @@
     </div>
 
     <script src="dashboard.js"></script>
-    <!-- Socket.IO client library -->
-    <script src="/socket.io/socket.io.js"></script>
-    <!-- Custom socket client -->
-    <script src="/public/js/socket-client.js"></script>
 </body>
 </html> 

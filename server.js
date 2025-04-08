@@ -7,177 +7,42 @@ const dotenv = require('dotenv');
 const { parse } = require('csv-parse');
 const cors = require('cors');
 const nodemailer = require('nodemailer');
-const http = require('http');
-const socketIo = require('socket.io');
 
 // Load environment variables
 dotenv.config();
 
 const app = express();
-const server = http.createServer(app);
-const io = socketIo(server, {
-  cors: {
-    origin: "*",
-    methods: ["GET", "POST"],
-    allowedHeaders: ["*"],
-    credentials: true
-  }
-});
-
-// Socket.IO connection handling
-io.on('connection', (socket) => {
-  console.log('New client connected, ID:', socket.id);
-  
-  socket.on('join', (userId) => {
-    if (userId) {
-      console.log(`User ${userId} joined room: ${userId}`);
-      socket.join(userId);
-    }
-  });
-
-  socket.on('disconnect', () => {
-    console.log('Client disconnected');
-  });
-});
-
-// Socket.IO notification function
-function notifyClients(event, data, roomId = null) {
-  if (roomId) {
-    console.log(`Emitting ${event} to room ${roomId}:`, data);
-    io.to(roomId).emit(event, data);
-  } else {
-    console.log(`Broadcasting ${event} to all clients:`, data);
-    io.emit(event, data);
-  }
-}
-
 const upload = multer({ dest: 'uploads/' });
-
-// Add proper MIME type handling for JavaScript and JSON files
-app.use((req, res, next) => {
-  const url = req.url;
-  
-  // Set correct MIME types for various file extensions
-  if (url.endsWith('.js')) {
-    res.setHeader('Content-Type', 'application/javascript');
-  } else if (url.endsWith('.json')) {
-    res.setHeader('Content-Type', 'application/json');
-  } else if (url.endsWith('.css')) {
-    res.setHeader('Content-Type', 'text/css');
-  } else if (url.endsWith('.html')) {
-    res.setHeader('Content-Type', 'text/html');
-  }
-  
-  next();
-});
 
 // Middleware
 app.use(cors());
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false }));
-
-// Serve files from public directory with explicit MIME handling
-app.use(express.static(path.join(__dirname, 'public'), {
-  setHeaders: (res, path) => {
-    if (path.endsWith('.js')) {
-      res.setHeader('Content-Type', 'application/javascript');
-    } else if (path.endsWith('.css')) {
-      res.setHeader('Content-Type', 'text/css');
-    }
-  }
-}));
-
-// Route handlers for the main pages
-app.get('/', function(req, res) {
-    res.sendFile(path.join(__dirname, 'public/views/index.html'));
-});
-
-app.get('/admin', function(req, res) {
-    res.sendFile(path.join(__dirname, 'public/views/admin.html'));
-});
-
-app.get('/admin.html', function(req, res) {
-    res.sendFile(path.join(__dirname, 'public/views/admin.html'));
-});
-
-app.get('/dashboard', function(req, res) {
-    res.sendFile(path.join(__dirname, 'public/views/dashboard.html'));
-});
-
-app.get('/dashboard.html', function(req, res) {
-    res.sendFile(path.join(__dirname, 'public/views/dashboard.html'));
-});
-
-app.get('/userContent', function(req, res) {
-    res.sendFile(path.join(__dirname, 'public/views/userContent.html'));
-});
-
-app.get('/userContent.html', function(req, res) {
-    res.sendFile(path.join(__dirname, 'public/views/userContent.html'));
-});
-
-// Redirect old paths to new paths
-app.get('/index.html', function(req, res) {
-    res.redirect('/');
-});
-
-// Update paths for API routes
-app.get('/admin', function(req, res) {
-    res.sendFile(path.join(__dirname, 'public/views/admin.html'));
-});
-
-app.get('/dashboard', function(req, res) {
-    res.sendFile(path.join(__dirname, 'public/views/dashboard.html'));
-});
-
-app.get('/userContent', function(req, res) {
-    res.sendFile(path.join(__dirname, 'public/views/userContent.html'));
-});
-
-// Update the data directory path for local and Glitch environments
-const isGlitch = process.env.PROJECT_DOMAIN !== undefined;
-const isRender = process.env.RENDER !== undefined;
-
-// Choose data directory location based on environment
-let dataDir;
-if (isGlitch) {
-    dataDir = path.join(__dirname, '.data');
-    console.log("Running on Glitch. Data directory:", dataDir);
-} else if (isRender) {
-    // On Render, use a directory at the project root
-    dataDir = path.join(__dirname, 'data');
-    console.log("Running on Render. Data directory:", dataDir);
-} else {
-    // Local development
-    dataDir = path.join(__dirname, 'server', 'data');
-    console.log("Running locally. Data directory:", dataDir);
-}
+app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static(path.join(__dirname, '.')));
 
 // Define file paths
-const usersFilePath = path.join(dataDir, 'users.json');
-const widgetsFilePath = path.join(dataDir, 'widgets.json');
-const contentFilePath = path.join(dataDir, 'content.json');
-const metricsFilePath = path.join(dataDir, 'metrics.json');
-const historicalFilePath = path.join(dataDir, 'historical.json');
+const usersFilePath = path.join(__dirname, 'users.json');
+const widgetsFilePath = path.join(__dirname, 'widgets.json');
+const contentFilePath = path.join(__dirname, 'content.json');
+const metricsFilePath = path.join(__dirname, 'metrics.json');
+const historicalFilePath = path.join(__dirname, 'historical.json');
 
-// Make sure data directories exist
+// Middleware
+app.use(express.static(path.join(__dirname, '.')));
+
+// Create necessary directories if they don't exist
 const dirs = [
     path.join(__dirname, 'uploads'),
-    dataDir,
-    path.join(dataDir, 'email-stats'),
-    path.join(dataDir, 'metrics'),
-    path.join(dataDir, 'historical'),
-    path.join(dataDir, 'logo-preferences'),
-    path.join(dataDir, 'instagram-marketing')
+    path.join(__dirname, 'data'),
+    path.join(__dirname, 'data', 'email-stats'),
+    path.join(__dirname, 'data', 'metrics'),
+    path.join(__dirname, 'data', 'historical')
 ];
 
-// Create all required directories
 dirs.forEach(dir => {
     if (!fs.existsSync(dir)) {
         fs.mkdirSync(dir, { recursive: true });
-        console.log(`Created directory: ${dir}`);
-    } else {
-        console.log(`Directory exists: ${dir}`);
     }
 });
 
@@ -188,17 +53,13 @@ const dataFiles = {
     'content.json': {},
     'metrics.json': {},
     'historical.json': {},
-    'email-suggestions.json': []
+    'data/email-suggestions.json': [],
+    'data/meetings.json': {} // Add meetings data file
 };
 
 Object.entries(dataFiles).forEach(([file, defaultContent]) => {
-    const filePath = path.join(dataDir, file);
+    const filePath = path.join(__dirname, file);
     if (!fs.existsSync(filePath)) {
-        // Ensure directory exists
-        const dir = path.dirname(filePath);
-        if (!fs.existsSync(dir)) {
-            fs.mkdirSync(dir, { recursive: true });
-        }
         fs.writeFileSync(filePath, JSON.stringify(defaultContent, null, 2));
     }
 });
@@ -222,208 +83,21 @@ let websiteQueries = {};
 let meetings = {}; // Storage for upcoming meetings data
 let instagramData = {};
 
-// Import utility functions conditionally
-let createDefaultUser; 
-try {
-    const createUserPath = path.join(__dirname, 'server', 'utils', 'create-user.js');
-    if (fs.existsSync(createUserPath)) {
-        createDefaultUser = require(createUserPath).createDefaultUser;
-        console.log('Successfully loaded create-user.js utility');
-    } else {
-        console.log('create-user.js utility not found at:', createUserPath);
-        createDefaultUser = null;
-    }
-} catch (error) {
-    console.error('Error loading create-user.js utility:', error);
-    createDefaultUser = null;
-}
-
-// Helper function to create a default user (fallback if utils module isn't available)
-function createDefaultUserFallback() {
-    try {
-        console.log('Creating default admin user...');
-        const users = readUsers();
-        
-        // Check if admin user already exists
-        if (users.some(u => u.username === 'admin' || u.userId === 'admin1')) {
-            console.log('Admin user already exists');
-            return;
-        }
-        
-        // Create admin user
-        const adminUser = {
-            username: 'admin',
-            userId: 'admin1',
-            passkey: 'admin123',
-            createdAt: new Date().toISOString(),
-            lastLogin: null
-        };
-        
-        users.push(adminUser);
-        writeUsers(users);
-        console.log('Admin user created successfully');
-        
-        // Create default data files for the admin user
-        const createDataForUser = (userId) => {
-            // Email stats
-            const emailStatsDir = path.join(dataDir, 'email-stats');
-            if (!fs.existsSync(emailStatsDir)) {
-                fs.mkdirSync(emailStatsDir, { recursive: true });
-            }
-            
-            const statsPath = path.join(emailStatsDir, `${userId}.json`);
-            if (!fs.existsSync(statsPath)) {
-                fs.writeFileSync(statsPath, JSON.stringify({
-                    sent: 100,
-                    total: 500,
-                    lastUpdated: new Date().toISOString()
-                }, null, 2));
-            }
-            
-            // Metrics
-            const metricsDir = path.join(dataDir, 'metrics');
-            if (!fs.existsSync(metricsDir)) {
-                fs.mkdirSync(metricsDir, { recursive: true });
-            }
-            
-            const metricsPath = path.join(metricsDir, `${userId}.json`);
-            if (!fs.existsSync(metricsPath)) {
-                fs.writeFileSync(metricsPath, JSON.stringify({
-                    leads: 50,
-                    revenue: 10000,
-                    customers: 25,
-                    lastUpdated: new Date().toISOString()
-                }, null, 2));
-            }
-            
-            // Instagram marketing
-            const instagramDir = path.join(dataDir, 'instagram-marketing');
-            if (!fs.existsSync(instagramDir)) {
-                fs.mkdirSync(instagramDir, { recursive: true });
-            }
-            
-            const instagramPath = path.join(instagramDir, `${userId}.json`);
-            if (!fs.existsSync(instagramPath)) {
-                fs.writeFileSync(instagramPath, JSON.stringify({
-                    accountsReached: 2500,
-                    leadsConverted: 75,
-                    niche: "Technology",
-                    lastUpdated: new Date().toISOString()
-                }, null, 2));
-            }
-        };
-        
-        createDataForUser(adminUser.userId);
-        console.log('Default data created for admin user');
-        
-    } catch (error) {
-        console.error('Error creating default user:', error);
-    }
-}
-
-// Try to create a default user at startup
-setTimeout(() => {
-    if (createDefaultUser) {
-        console.log('Using imported createDefaultUser function');
-        createDefaultUser();
-    } else {
-        console.log('Using fallback createDefaultUser function');
-        createDefaultUserFallback();
-    }
-}, 1000); // Wait 1 second after server start
-
-// Helper function to read users with better error handling and debugging
+// Helper function to read users
 function readUsers() {
     try {
-        console.log(`Reading users from: ${usersFilePath}`);
-        console.log(`File exists: ${fs.existsSync(usersFilePath)}`);
-        
-        // Check each parent directory exists
-        const dirPath = path.dirname(usersFilePath);
-        console.log(`Directory path: ${dirPath}, Exists: ${fs.existsSync(dirPath)}`);
-        
-        if (!fs.existsSync(usersFilePath)) {
-            console.log('Users file does not exist, creating empty file');
-            
-            // Make sure the directory exists
-            if (!fs.existsSync(dirPath)) {
-                console.log(`Creating directory: ${dirPath}`);
-                fs.mkdirSync(dirPath, { recursive: true });
-            }
-            
-            fs.writeFileSync(usersFilePath, JSON.stringify([]), 'utf8');
-            console.log(`Created empty users file at ${usersFilePath}`);
-            return [];
-        }
-        
-        const data = fs.readFileSync(usersFilePath, 'utf8');
-        console.log(`Users data read: ${data}`);
-        
-        if (!data || data.trim() === '') {
-            console.log('Users file is empty, returning empty array');
-            return [];
-        }
-        
-        try {
-            const users = JSON.parse(data);
-            console.log(`Parsed ${users.length} users`);
-            return users;
-        } catch (parseError) {
-            console.error('JSON parse error:', parseError);
-            console.log('Corrupted users file, creating backup and empty file');
-            
-            // Create backup of corrupted file
-            const backupPath = `${usersFilePath}.bak.${Date.now()}`;
-            fs.copyFileSync(usersFilePath, backupPath);
-            console.log(`Created backup at ${backupPath}`);
-            
-            // Write empty array
-            fs.writeFileSync(usersFilePath, JSON.stringify([]), 'utf8');
-            console.log('Created new empty users file');
-            return [];
-        }
+        const data = fs.readFileSync(usersFilePath);
+        return JSON.parse(data);
     } catch (error) {
         console.error('Error reading users:', error);
-        console.log('Error stack:', error.stack);
-        
-        try {
-            // Emergency recovery - create an empty users file
-            const dirPath = path.dirname(usersFilePath);
-            if (!fs.existsSync(dirPath)) {
-                fs.mkdirSync(dirPath, { recursive: true });
-            }
-            fs.writeFileSync(usersFilePath, JSON.stringify([]), 'utf8');
-            console.log('Emergency recovery: Created empty users file');
-        } catch (recoveryError) {
-            console.error('Recovery failed:', recoveryError);
-        }
-        
         return [];
     }
 }
 
-// Helper function to write users with better error handling
+// Helper function to write users
 function writeUsers(users) {
     try {
-        console.log(`Writing ${users.length} users to ${usersFilePath}`);
-        // Ensure the directory exists
-        const dir = path.dirname(usersFilePath);
-        if (!fs.existsSync(dir)) {
-            console.log(`Creating directory: ${dir}`);
-            fs.mkdirSync(dir, { recursive: true });
-        }
-        
-        const data = JSON.stringify(users, null, 2);
-        fs.writeFileSync(usersFilePath, data, 'utf8');
-        console.log('Users written successfully');
-        
-        // Verify the file was written correctly
-        if (fs.existsSync(usersFilePath)) {
-            const stat = fs.statSync(usersFilePath);
-            console.log(`File size: ${stat.size} bytes`);
-        }
-        
-        return true;
+        fs.writeFileSync(usersFilePath, JSON.stringify(users, null, 2));
     } catch (error) {
         console.error('Error writing users:', error);
         throw error;
@@ -550,16 +224,10 @@ app.get('/api/users', (req, res) => {
     }
 });
 
-// Add single user with enhanced debugging
+// Add single user
 app.post('/api/users', (req, res) => {
     try {
-        console.log('==========================================');
-        console.log('START: User Creation Process');
-        console.log('Received user data:', JSON.stringify(req.body));
-        console.log('Data directory:', dataDir);
-        console.log('Users file path:', usersFilePath);
-        console.log('File exists:', fs.existsSync(usersFilePath));
-        
+        console.log('Received user data:', req.body);
         const { username, userId, passkey } = req.body;
         
         // Validate input
@@ -568,9 +236,7 @@ app.post('/api/users', (req, res) => {
             return res.status(400).json({ message: 'All fields are required' });
         }
         
-        console.log('Reading existing users');
         const users = readUsers();
-        console.log(`Found ${users.length} existing users`);
         
         // Check if user already exists
         if (users.some(u => u.username === username || u.userId === userId)) {
@@ -587,92 +253,14 @@ app.post('/api/users', (req, res) => {
             lastLogin: null
         };
         
-        console.log('Adding new user:', newUser);
         users.push(newUser);
-        
-        console.log('Writing updated users list');
-        const writeResult = writeUsers(users);
-        console.log('Write result:', writeResult);
-        
-        // Verify the user was added
-        const verifyUsers = readUsers();
-        console.log(`After adding: ${verifyUsers.length} users`);
-        const userExists = verifyUsers.some(u => u.userId === userId);
-        console.log(`Verified user exists: ${userExists}`);
-        
-        // Create default data files for the new user
-        try {
-            console.log('Creating default data for user:', userId);
-            
-            // Email stats
-            const emailStatsDir = path.join(dataDir, 'email-stats');
-            if (!fs.existsSync(emailStatsDir)) {
-                fs.mkdirSync(emailStatsDir, { recursive: true });
-                console.log(`Created email stats directory: ${emailStatsDir}`);
-            }
-            
-            const statsPath = path.join(emailStatsDir, `${userId}.json`);
-            if (!fs.existsSync(statsPath)) {
-                fs.writeFileSync(statsPath, JSON.stringify({
-                    sent: 0,
-                    total: 0,
-                    lastUpdated: new Date().toISOString()
-                }, null, 2));
-                console.log(`Created email stats file for user: ${statsPath}`);
-            }
-            
-            // Metrics
-            const metricsDir = path.join(dataDir, 'metrics');
-            if (!fs.existsSync(metricsDir)) {
-                fs.mkdirSync(metricsDir, { recursive: true });
-                console.log(`Created metrics directory: ${metricsDir}`);
-            }
-            
-            const metricsPath = path.join(metricsDir, `${userId}.json`);
-            if (!fs.existsSync(metricsPath)) {
-                fs.writeFileSync(metricsPath, JSON.stringify({
-                    leads: 0,
-                    revenue: 0,
-                    customers: 0,
-                    lastUpdated: new Date().toISOString()
-                }, null, 2));
-                console.log(`Created metrics file for user: ${metricsPath}`);
-            }
-            
-            // Instagram marketing
-            const instagramDir = path.join(dataDir, 'instagram-marketing');
-            if (!fs.existsSync(instagramDir)) {
-                fs.mkdirSync(instagramDir, { recursive: true });
-                console.log(`Created Instagram directory: ${instagramDir}`);
-            }
-            
-            const instagramPath = path.join(instagramDir, `${userId}.json`);
-            if (!fs.existsSync(instagramPath)) {
-                fs.writeFileSync(instagramPath, JSON.stringify({
-                    accountsReached: 0,
-                    leadsConverted: 0,
-                    niche: "",
-                    lastUpdated: new Date().toISOString()
-                }, null, 2));
-                console.log(`Created Instagram file for user: ${instagramPath}`);
-            }
-            
-        } catch (dataError) {
-            console.error('Error creating data files for new user:', dataError);
-        }
-        
+        writeUsers(users);
         console.log('User added successfully:', username);
-        console.log('END: User Creation Process');
-        console.log('==========================================');
-        
-        // Notify connected clients about the new user
-        notifyClients('user-created', { userId, username });
         
         res.status(201).json(newUser);
     } catch (error) {
         console.error('Error adding user:', error);
-        console.error('Error stack:', error.stack);
-        res.status(500).json({ message: 'Error adding user', error: error.message });
+        res.status(500).json({ message: 'Error adding user' });
     }
 });
 
@@ -911,7 +499,7 @@ app.post('/api/dashboard/content/:userId', (req, res) => {
 app.get('/api/dashboard/metrics/:userId', async (req, res) => {
     try {
         const { userId } = req.params;
-        const metricsPath = path.join(dataDir, 'metrics', `${userId}.json`);
+        const metricsPath = path.join(__dirname, 'data', 'metrics', `${userId}.json`);
         
         if (!fs.existsSync(metricsPath)) {
             // Initialize with default metrics if file doesn't exist
@@ -943,7 +531,7 @@ app.post('/api/dashboard/metrics/:userId', async (req, res) => {
             return res.status(400).json({ error: 'Missing required fields' });
         }
         
-        const metricsPath = path.join(dataDir, 'metrics', `${userId}.json`);
+        const metricsPath = path.join(__dirname, 'data', 'metrics', `${userId}.json`);
         let metrics = {};
         
         if (fs.existsSync(metricsPath)) {
@@ -968,7 +556,7 @@ app.post('/api/dashboard/metrics/:userId', async (req, res) => {
 app.get('/api/dashboard/historical/:userId', async (req, res) => {
     try {
         const userId = req.params.userId;
-        const historicalDataPath = path.join(dataDir, 'historical', `${userId}.json`);
+        const historicalDataPath = path.join(__dirname, 'data', 'historical', `${userId}.json`);
         
         if (!fs.existsSync(historicalDataPath)) {
             // If no historical data exists, return empty array
@@ -994,7 +582,7 @@ app.post('/api/dashboard/historical/:userId', async (req, res) => {
             return res.status(400).json({ error: 'Missing required fields' });
         }
         
-        const historicalPath = path.join(dataDir, 'historical', `${userId}.json`);
+        const historicalPath = path.join(__dirname, 'data', 'historical', `${userId}.json`);
         let historical = [];
         
         if (fs.existsSync(historicalPath)) {
@@ -1028,7 +616,7 @@ app.post('/api/dashboard/historical/:userId', async (req, res) => {
 app.delete('/api/dashboard/historical/:userId/:date', async (req, res) => {
     try {
         const { userId, date } = req.params;
-        const historicalPath = path.join(dataDir, 'historical', `${userId}.json`);
+        const historicalPath = path.join(__dirname, 'data', 'historical', `${userId}.json`);
         
         if (!fs.existsSync(historicalPath)) {
             return res.status(404).json({ error: 'No historical data found' });
@@ -1051,7 +639,7 @@ app.delete('/api/dashboard/historical/:userId/:date', async (req, res) => {
 app.get('/api/email-marketing/suggestions', async (req, res) => {
     try {
         const userId = req.query.userId;
-        const suggestionsPath = path.join(dataDir, 'email-suggestions.json');
+        const suggestionsPath = path.join(__dirname, 'data', 'email-suggestions.json');
         
         if (!fs.existsSync(suggestionsPath)) {
             return res.json([]);
@@ -1080,7 +668,7 @@ app.post('/api/email-marketing/suggest', async (req, res) => {
             return res.status(400).json({ error: 'Missing required fields' });
         }
         
-        const suggestionsPath = path.join(dataDir, 'email-suggestions.json');
+        const suggestionsPath = path.join(__dirname, 'data', 'email-suggestions.json');
         let suggestions = [];
         
         if (fs.existsSync(suggestionsPath)) {
@@ -1112,7 +700,7 @@ app.get('/api/email-marketing/:userId', async (req, res) => {
         console.log('Fetching email stats for user:', userId);
         
         // Ensure the email-stats directory exists
-        const emailStatsDir = path.join(dataDir, 'email-stats');
+        const emailStatsDir = path.join(__dirname, 'data', 'email-stats');
         if (!fs.existsSync(emailStatsDir)) {
             fs.mkdirSync(emailStatsDir, { recursive: true });
         }
@@ -1173,7 +761,7 @@ app.post('/api/email-marketing/:userId', async (req, res) => {
         }
         
         // Ensure the email-stats directory exists
-        const emailStatsDir = path.join(dataDir, 'email-stats');
+        const emailStatsDir = path.join(__dirname, 'data', 'email-stats');
         if (!fs.existsSync(emailStatsDir)) {
             fs.mkdirSync(emailStatsDir, { recursive: true });
         }
@@ -1189,7 +777,7 @@ app.post('/api/email-marketing/:userId', async (req, res) => {
         fs.writeFileSync(statsPath, JSON.stringify(stats, null, 2));
         
         // Also update the user's metrics file to keep dashboard in sync
-        const metricsDir = path.join(dataDir, 'metrics');
+        const metricsDir = path.join(__dirname, 'data', 'metrics');
         if (!fs.existsSync(metricsDir)) {
             fs.mkdirSync(metricsDir, { recursive: true });
         }
@@ -1204,9 +792,6 @@ app.post('/api/email-marketing/:userId', async (req, res) => {
         metrics.email_stats = stats;
         console.log('Updating metrics file with email stats:', metrics);
         fs.writeFileSync(metricsPath, JSON.stringify(metrics, null, 2));
-        
-        // Notify connected clients about the updated email stats
-        notifyClients('email-stats-updated', stats, userId);
         
         // Send email notification
         const users = readUsers();
@@ -1235,11 +820,12 @@ app.post('/api/email-marketing/:userId', async (req, res) => {
 });
 
 // Helper functions for website configurations
-const WEBSITE_CONFIGS_FILE = path.join(dataDir, 'website-configs.json');
+const WEBSITE_CONFIGS_FILE = path.join(__dirname, 'data', 'website-configs.json');
 
 function readWebsiteConfigs() {
     try {
-        // Create directory if it doesn't exist
+        // Create data directory if it doesn't exist
+        const dataDir = path.join(__dirname, 'data');
         if (!fs.existsSync(dataDir)) {
             fs.mkdirSync(dataDir, { recursive: true });
         }
@@ -1260,7 +846,8 @@ function readWebsiteConfigs() {
 
 function writeWebsiteConfigs(configs) {
     try {
-        // Create directory if it doesn't exist
+        // Create data directory if it doesn't exist
+        const dataDir = path.join(__dirname, 'data');
         if (!fs.existsSync(dataDir)) {
             fs.mkdirSync(dataDir, { recursive: true });
         }
@@ -1286,7 +873,7 @@ app.get('/api/website-config/:userId', (req, res) => {
             previewImageUrl: '',
             brandName: '',
             websiteType: '',
-            colors: {
+            colorScheme: {
                 primary: '#000000',
                 secondary: '#ffffff',
                 tertiary: '#cccccc'
@@ -1327,7 +914,7 @@ app.post('/api/website-config/:userId', (req, res) => {
                 previewImageUrl: '',
                 brandName: '',
                 websiteType: '',
-                colors: {
+                colorScheme: {
                     primary: '#000000',
                     secondary: '#ffffff',
                     tertiary: '#cccccc'
@@ -1345,18 +932,25 @@ app.post('/api/website-config/:userId', (req, res) => {
             lastUpdated: new Date().toISOString()
         };
 
+        // Ensure color scheme is stored consistently
+        if (updates.colorScheme) {
+            configs[userId].colorScheme = updates.colorScheme;
+            // Remove duplicate colors field if it exists
+            delete configs[userId].colors;
+        }
+
         // Ensure submissions array exists
         if (!configs[userId].submissions) {
             configs[userId].submissions = [];
         }
 
         // Add the new submission if it's a form submission for state 1
-        if (updates.state === 1 && updates.brandName && updates.websiteType && updates.colors) {
+        if (updates.state === 1 && updates.brandName && updates.websiteType && updates.colorScheme) {
             const submission = {
                 timestamp: updates.timestamp || new Date().toISOString(),
                 brandName: updates.brandName,
                 websiteType: updates.websiteType,
-                colors: updates.colors,
+                colorScheme: updates.colorScheme,
                 referenceWebsite: updates.referenceWebsite
             };
             configs[userId].submissions.push(submission);
@@ -1429,7 +1023,7 @@ app.post('/api/website-config/:userId/query', (req, res) => {
                 previewImageUrl: '',
                 brandName: '',
                 websiteType: '',
-                colors: {
+                colorScheme: {
                     primary: '#000000',
                     secondary: '#ffffff',
                     tertiary: '#cccccc'
@@ -1664,7 +1258,7 @@ app.delete('/api/preview/:userId', (req, res) => {
 
 // Function to read logo preferences
 function readLogoPreferences() {
-    const filePath = path.join(dataDir, 'logo-preferences.json');
+    const filePath = path.join(__dirname, 'data', 'logo-preferences.json');
     if (!fs.existsSync(filePath)) {
         // Create directory if it doesn't exist
         if (!fs.existsSync(path.dirname(filePath))) {
@@ -1686,7 +1280,7 @@ function readLogoPreferences() {
 
 // Function to write logo preferences
 function writeLogoPreferences(preferences) {
-    const filePath = path.join(dataDir, 'logo-preferences.json');
+    const filePath = path.join(__dirname, 'data', 'logo-preferences.json');
     // Create directory if it doesn't exist
     if (!fs.existsSync(path.dirname(filePath))) {
         fs.mkdirSync(path.dirname(filePath), { recursive: true });
@@ -1903,15 +1497,15 @@ app.delete('/api/logo/:userId', (req, res) => {
 
 // ====================== Instagram Marketing API ======================
 // Create directory for Instagram marketing data if it doesn't exist
-if (!fs.existsSync(path.join(dataDir, 'instagram-marketing'))) {
-    fs.mkdirSync(path.join(dataDir, 'instagram-marketing'), { recursive: true });
+if (!fs.existsSync(path.join(__dirname, 'data', 'instagram-marketing'))) {
+    fs.mkdirSync(path.join(__dirname, 'data', 'instagram-marketing'), { recursive: true });
 }
 
 // Get Instagram marketing data
 app.get('/api/instagram-marketing/:userId', (req, res) => {
     try {
         const userId = req.params.userId;
-        const filePath = path.join(dataDir, 'instagram-marketing', `${userId}.json`);
+        const filePath = path.join(__dirname, 'data', 'instagram-marketing', `${userId}.json`);
         
         if (!fs.existsSync(filePath)) {
             // Return default data if file doesn't exist
@@ -1936,7 +1530,7 @@ app.post('/api/instagram-marketing/:userId', (req, res) => {
     try {
         const userId = req.params.userId;
         const { accountsReached, leadsConverted } = req.body;
-        const filePath = path.join(dataDir, 'instagram-marketing', `${userId}.json`);
+        const filePath = path.join(__dirname, 'data', 'instagram-marketing', `${userId}.json`);
         
         // Read existing data or create default
         let data = {};
@@ -1958,10 +1552,6 @@ app.post('/api/instagram-marketing/:userId', (req, res) => {
         
         // Save data
         fs.writeFileSync(filePath, JSON.stringify(data, null, 2));
-        
-        // Notify connected clients about the updated data
-        notifyClients('instagram-data-updated', data, userId);
-        
         res.json(data);
     } catch (error) {
         console.error('Error updating Instagram marketing data:', error);
@@ -1974,7 +1564,7 @@ app.post('/api/instagram-marketing/:userId/preference', (req, res) => {
     try {
         const userId = req.params.userId;
         const { niche } = req.body;
-        const filePath = path.join(dataDir, 'instagram-marketing', `${userId}.json`);
+        const filePath = path.join(__dirname, 'data', 'instagram-marketing', `${userId}.json`);
         
         if (!niche) {
             return res.status(400).json({ error: 'Niche is required' });
@@ -2010,92 +1600,104 @@ app.post('/api/instagram-marketing/:userId/preference', (req, res) => {
 
 // Upcoming Meetings Endpoints
 app.get('/api/upcoming-meetings/:userId', (req, res) => {
-    const userId = req.params.userId;
-    const userMeetings = meetings[userId];
-    
-    if (!userMeetings) {
-        return res.status(404).json({ error: 'Meetings not found for this user' });
+    try {
+        const userId = req.params.userId;
+        
+        // Sanitize userId to remove any special characters
+        const sanitizedUserId = userId.replace(/[^a-zA-Z0-9]/g, '');
+        
+        // Get meetings data from file
+        const meetingsPath = path.join(__dirname, 'data', 'meetings.json');
+        let meetings = {};
+        
+        if (fs.existsSync(meetingsPath)) {
+            meetings = JSON.parse(fs.readFileSync(meetingsPath, 'utf8'));
+        }
+        
+        // If no meetings exist for this user, return default data
+        if (!meetings[sanitizedUserId]) {
+            const defaultMeeting = {
+                heading: 'Strategy Session',
+                subtitle: 'With our experts who will guide you in building a profitable business',
+                description: 'Join us for a personalized strategy session to analyze your business goals and create an action plan.',
+                dateTime: 'Next available slot',
+                profileImage: 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI4MCIgaGVpZ2h0PSI4MCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiMzNDk4ZGIiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48cGF0aCBkPSJNMjAgMjFWMTlDMjAgMTYuNzkwOCAxOC4yMDkxIDE1IDE2IDE1SDhDNS43OTA4NiAxNSA0IDE2Ljc5MDkgNCAxOVYyMSIvPjxjaXJjbGUgY3g9IjEyIiBjeT0iNyIgcj0iNCIvPjwvc3ZnPg==',
+                meetingLink: '#schedule'
+            };
+            
+            // Save default meeting data for this user
+            meetings[sanitizedUserId] = defaultMeeting;
+            fs.writeFileSync(meetingsPath, JSON.stringify(meetings, null, 2));
+            
+            return res.json(defaultMeeting);
+        }
+        
+        res.json(meetings[sanitizedUserId]);
+    } catch (error) {
+        console.error('Error fetching upcoming meetings:', error);
+        // Return default data even in case of error
+        res.json({
+            heading: 'Strategy Session',
+            subtitle: 'With our experts who will guide you in building a profitable business',
+            description: 'Join us for a personalized strategy session to analyze your business goals and create an action plan.',
+            dateTime: 'Next available slot',
+            profileImage: 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI4MCIgaGVpZ2h0PSI4MCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiMzNDk4ZGIiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48cGF0aCBkPSJNMjAgMjFWMTlDMjAgMTYuNzkwOCAxOC4yMDkxIDE1IDE2IDE1SDhDNS43OTA4NiAxNSA0IDE2Ljc5MDkgNCAxOVYyMSIvPjxjaXJjbGUgY3g9IjEyIiBjeT0iNyIgcj0iNCIvPjwvc3ZnPg==',
+            meetingLink: '#schedule'
+        });
     }
-    
-    res.json(userMeetings);
 });
 
 app.post('/api/upcoming-meetings/:userId', (req, res) => {
-    const userId = req.params.userId;
-    const meetingData = req.body;
-    
-    // Validate required fields
-    if (!meetingData.heading || !meetingData.description || !meetingData.dateTime) {
-        return res.status(400).json({ error: 'Missing required meeting fields' });
+    try {
+        const userId = req.params.userId;
+        const meetingData = req.body;
+        
+        // Sanitize userId to remove any special characters
+        const sanitizedUserId = userId.replace(/[^a-zA-Z0-9]/g, '');
+        
+        // Validate required fields
+        if (!meetingData.heading || !meetingData.description || !meetingData.dateTime) {
+            return res.status(400).json({ error: 'Missing required meeting fields' });
+        }
+        
+        // Get current meetings data
+        const meetingsPath = path.join(__dirname, 'data', 'meetings.json');
+        let meetings = {};
+        
+        if (fs.existsSync(meetingsPath)) {
+            meetings = JSON.parse(fs.readFileSync(meetingsPath, 'utf8'));
+        }
+        
+        // Update meeting data for this user
+        meetings[sanitizedUserId] = {
+            heading: meetingData.heading,
+            subtitle: meetingData.subtitle || 'With our experts who will guide you in building a profitable business',
+            description: meetingData.description,
+            dateTime: meetingData.dateTime,
+            profileImage: meetingData.profileImage || 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI4MCIgaGVpZ2h0PSI4MCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiMzNDk4ZGIiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48cGF0aCBkPSJNMjAgMjFWMTlDMjAgMTYuNzkwOCAxOC4yMDkxIDE1IDE2IDE1SDhDNS43OTA4NiAxNSA0IDE2Ljc5MDkgNCAxOVYyMSIvPjxjaXJjbGUgY3g9IjEyIiBjeT0iNyIgcj0iNCIvPjwvc3ZnPg==',
+            meetingLink: meetingData.meetingLink || '#schedule',
+            lastUpdated: new Date().toISOString()
+        };
+        
+        // Save to file
+        fs.writeFileSync(meetingsPath, JSON.stringify(meetings, null, 2));
+        
+        console.log(`Updated meetings for user ${sanitizedUserId}:`, meetings[sanitizedUserId]);
+        res.json({ 
+            success: true, 
+            message: 'Meeting data updated successfully',
+            data: meetings[sanitizedUserId]
+        });
+    } catch (error) {
+        console.error('Error updating meeting data:', error);
+        res.status(500).json({ 
+            error: 'Failed to update meeting data',
+            message: error.message 
+        });
     }
-    
-    // Store or update meeting data
-    meetings[userId] = {
-        heading: meetingData.heading,
-        subtitle: meetingData.subtitle || 'With our experts who will guide you in building a profitable business',
-        description: meetingData.description,
-        dateTime: meetingData.dateTime,
-        profileImage: meetingData.profileImage || 'https://via.placeholder.com/80',
-        meetingLink: meetingData.meetingLink || '#schedule'
-    };
-    
-    console.log(`Updated meetings for user ${userId}:`, meetings[userId]);
-    res.json({ success: true, message: 'Meeting data updated successfully' });
 });
 
-// Ensure data directories exist
-if (!fs.existsSync(dataDir)) {
-    fs.mkdirSync(dataDir, { recursive: true });
-}
-
-// Ensure subdirectories exist
-['email-stats', 'metrics', 'historical', 'logo-preferences', 'instagram-marketing'].forEach(subDir => {
-    const dir = path.join(dataDir, subDir);
-    if (!fs.existsSync(dir)) {
-        fs.mkdirSync(dir, { recursive: true });
-    }
-});
-
-// Improved error handling for uncaught exceptions
-process.on('uncaughtException', (error) => {
-    console.error('Uncaught Exception:', error);
-    // Log to file here if needed
-    // Optionally, you could restart the server here
-});
-
-// Handle unhandled promise rejections
-process.on('unhandledRejection', (reason, promise) => {
-    console.error('Unhandled Rejection at:', promise, 'reason:', reason);
-    // Log to file here if needed
-});
-
-// Graceful shutdown
-process.on('SIGTERM', () => {
-    console.log('SIGTERM received, shutting down gracefully');
-    // Close any database connections or other resources here
-    process.exit(0);
-});
-
-// Listen on all interfaces (0.0.0.0) to make the server accessible externally
-const PORT = process.env.PORT || 8080;
-server.listen(PORT, '0.0.0.0', () => {
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, '0.0.0.0', () => {
     console.log(`Server running on port ${PORT}`);
-    console.log(`Access locally via: http://localhost:${PORT}`);
-    console.log(`For access from other devices use your computer's IP address`);
-});
-
-// Add direct routes for JS files to ensure correct MIME type
-app.get('/js/instagramMarketing.js', (req, res) => {
-  res.setHeader('Content-Type', 'application/javascript');
-  res.sendFile(path.join(__dirname, 'public/js/instagramMarketing.js'));
-});
-
-app.get('/js/userContent.js', (req, res) => {
-  res.setHeader('Content-Type', 'application/javascript');
-  res.sendFile(path.join(__dirname, 'public/js/userContent.js'));
-});
-
-app.get('/js/socket-client.js', (req, res) => {
-  res.setHeader('Content-Type', 'application/javascript');
-  res.sendFile(path.join(__dirname, 'public/js/socket-client.js'));
 }); 

@@ -1,108 +1,36 @@
 # TheEace Login Portal
 
-A login portal with dashboard and user management features.
+A dashboard application with user management, statistics, and content management features.
 
 ## Features
 
-- User login and authentication
-- Interactive dashboard
-- User content management
-- Real-time data synchronization
-- Email marketing tools
-- Instagram marketing metrics
-- Website configuration tools
+- User authentication
+- Dashboard with real-time statistics
+- Email marketing tracking
 - Logo preference management
+- Website configuration tools
+- Instagram marketing metrics
+- Upcoming meetings management
 
-## Real-Time Updates
+## Technology Stack
 
-This application now supports real-time data synchronization between different users and devices. When changes are made on one device, they're automatically reflected on all other connected devices without requiring a page refresh.
+- Node.js
+- Express
+- Vanilla JavaScript (Frontend)
+- File-based data storage
 
-Real-time updates include:
-- New user creation
-- Email marketing stats updates
-- Instagram marketing metrics changes
-- Website configuration changes
-- Logo preference updates
-
-## File Structure
-
-The project is organized into the following structure:
-
-```
-theeace-login-portal/
-│
-├── public/                # Static client-side files
-│   ├── css/               # CSS stylesheets
-│   ├── js/                # Client-side JavaScript
-│   ├── views/             # HTML files
-│   └── img/               # Images folder
-│
-├── server/                # Server-side code
-│   ├── config/            # Configuration files
-│   ├── data/              # Data storage (auto-created)
-│   ├── routes/            # API routes in future
-│   └── utils/             # Utility functions
-│
-├── docs/                  # Documentation
-│
-├── .dockerignore          # Docker ignore file
-├── .gitignore             # Git ignore file
-├── fly.toml               # Fly.io configuration
-├── package.json           # NPM package config
-├── package-lock.json      # NPM dependencies lockfile
-├── README.md              # Project README
-└── server.js              # Main server entry point
-```
-
-## Setup and Installation
-
-1. Clone the repository
-2. Install dependencies:
-   ```
-   npm install
-   ```
-3. Start the server:
-   ```
-   npm start
-   ```
-   
 ## Deployment
 
-This application can be deployed to various platforms:
+This application can be deployed on Render or any Node.js hosting service.
 
-- **Local deployment**: Run `npm start` to start the server locally
-- **Glitch.com**: See [docs/GLITCH_INSTRUCTIONS.md](docs/GLITCH_INSTRUCTIONS.md) for detailed steps
-- **Fly.io**: See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) for detailed steps
+## Getting Started
 
-For more deployment options without requiring a credit card, see [docs/DEPLOYMENT_ALTERNATIVE.md](docs/DEPLOYMENT_ALTERNATIVE.md).
+```
+npm install
+npm start
+```
 
-## Default Login
-
-After installation, you can use these credentials to log in:
-- Username: admin
-- User ID: admin1
-- Passkey: admin123
-
-Or create a new user through the registration page.
-
-## Troubleshooting
-
-If users or data aren't showing up properly:
-
-1. Run the diagnostics script:
-   ```
-   node server/utils/debug-data-paths.js
-   ```
-
-2. Create a default admin user with sample data:
-   ```
-   node server/utils/create-user.js
-   ```
-
-3. Restart the server:
-   ```
-   npm start
-   ```
+The application will run on port 5000 by default, or the port specified in the PORT environment variable.
 
 ## CSV Format
 
@@ -111,4 +39,13 @@ The bulk import feature accepts CSV files in the following format:
 username,userId,passkey
 user1,12345,password1
 user2,67890,password2
-``` 
+```
+
+## File Structure
+
+- `server.js`: Main server file
+- `admin.html`: Admin portal interface
+- `admin.js`: Admin functionality
+- `script.js`: Login functionality
+- `styles.css`: Styling
+- `users.json`: User database 

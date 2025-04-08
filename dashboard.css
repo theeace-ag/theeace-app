@@ -512,85 +512,68 @@ body {
 }
 
 .form-group {
-    margin-bottom: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
 }
 
 .form-group label {
-    display: block;
-    margin-bottom: 0.5rem;
+    font-size: 0.875rem;
+    color: #4a5568;
     font-weight: 500;
-    color: var(--text-color);
 }
 
 .form-group input[type="text"],
 .form-group input[type="url"],
-.form-group select,
 .form-group textarea {
-    width: 100%;
     padding: 0.75rem;
-    border: 1px solid var(--border-color);
-    border-radius: 4px;
-    background-color: var(--input-bg);
-    color: var(--text-color);
-    transition: all 0.3s ease;
+    border: 1px solid #e2e8f0;
+    border-radius: 0.5rem;
+    font-size: 0.875rem;
+    transition: all 0.2s ease;
 }
 
 .form-group input[type="text"]:focus,
 .form-group input[type="url"]:focus,
-.form-group select:focus,
 .form-group textarea:focus {
-    border-color: var(--primary-color);
     outline: none;
-    box-shadow: 0 0 0 2px rgba(var(--primary-color-rgb), 0.1);
+    border-color: #4299e1;
+    box-shadow: 0 0 0 3px rgba(66, 153, 225, 0.1);
 }
 
-/* Color Input Styles */
 .color-inputs {
     display: flex;
     gap: 1rem;
-    margin-top: 0.5rem;
+    flex-wrap: wrap;
 }
 
 .color-input {
-    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
 }
 
 .color-input label {
-    display: block;
-    margin-bottom: 0.5rem;
-    font-size: 0.875rem;
-    color: var(--text-color);
+    font-size: 0.75rem;
 }
 
-.color-input input[type="text"] {
-    width: 100%;
-    padding: 0.75rem;
-    border: 1px solid var(--border-color);
-    border-radius: 0.5rem;
-    font-family: monospace;
-    font-size: 0.875rem;
-    color: var(--text-color);
-    background: var(--input-bg);
-    transition: all 0.2s ease;
-}
-
-.color-input input[type="text"]:focus {
-    outline: none;
-    border-color: var(--primary-color);
-    box-shadow: 0 0 0 3px rgba(var(--primary-color-rgb), 0.1);
-}
-
-.color-input input[type="text"]::placeholder {
-    color: var(--text-muted);
-}
-
-.color-input input[type="text"]:invalid {
-    border-color: var(--error-color);
-}
-
-/* Remove any existing color picker styles */
 .color-input input[type="color"] {
-    display: none;
+    width: 50px;
+    height: 50px;
+    padding: 0;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+}
+
+.color-input input[type="color"]::-webkit-color-swatch-wrapper {
+    padding: 0;
+}
+
+.color-input input[type="color"]::-webkit-color-swatch {
+    border: none;
+    border-radius: 8px;
 }
 
 .website-preview {

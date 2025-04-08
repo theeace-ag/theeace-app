@@ -617,132 +617,76 @@ const debouncedUpdateWebsiteState = debounce(async (state) => {
     }
 }, 500); // Reduced from 1000ms to 500ms for faster response
 
-// Store color change history
-let colorChangeHistory = [];
-
-// Listen for website configuration updates from dashboard
-window.addEventListener('message', async (event) => {
+// Initialize website configuration
+async function loadWebsiteConfig(userId) {
     try {
-        if (event.data && event.data.type === 'websiteConfigUpdate') {
-            console.log('Received website config update from dashboard:', event.data);
-            
-            // Update color scheme
-            if (event.data.colorScheme) {
-                const { primary, secondary, tertiary } = event.data.colorScheme;
-                console.log('Updating colors from dashboard:', { primary, secondary, tertiary });
-                
-                // Update color input fields (readonly)
-                const primaryColorInput = document.getElementById('primaryColor');
-                const secondaryColorInput = document.getElementById('secondaryColor');
-                const tertiaryColorInput = document.getElementById('tertiaryColor');
-                
-                if (primaryColorInput) {
-                    primaryColorInput.value = primary;
-                    primaryColorInput.readOnly = true;
-                }
-                if (secondaryColorInput) {
-                    secondaryColorInput.value = secondary;
-                    secondaryColorInput.readOnly = true;
-                }
-                if (tertiaryColorInput) {
-                    tertiaryColorInput.value = tertiary;
-                    tertiaryColorInput.readOnly = true;
-                }
-                
-                // Apply colors to the page
-                applyColorScheme(primary, secondary, tertiary);
-                
-                // Add to color history
-                addToColorHistory(primary, secondary, tertiary);
+        console.log('Loading website configuration for user:', userId);
+        currentUserId = userId;
+        
+        const response = await fetch(`/api/website-config/${userId}`);
+        if (!response.ok) {
+            throw new Error(`Failed to fetch website configuration: ${response.status}`);
+        }
+        
+        const config = await response.json();
+        currentConfig = config;
+        console.log('Loaded website config:', config);
+        
+        // Update state toggle and text
+        const stateToggle = document.getElementById('stateToggle');
+        const state1Form = document.getElementById('state1Form');
+        const state2Preview = document.getElementById('state2Preview');
+        const stateText = document.getElementById('stateText');
+        
+        if (stateToggle) {
+            console.log('Setting toggle state to:', config.state === 2);
+            stateToggle.checked = config.state === 2;
+        } else {
+            console.error('stateToggle element not found');
+        }
+        
+        // Update section visibility
+        if (state1Form) state1Form.style.display = config.state === 1 ? 'block' : 'none';
+        if (state2Preview) state2Preview.style.display = config.state === 2 ? 'block' : 'none';
+        if (stateText) stateText.textContent = config.state === 2 ? 'Live Website' : 'Configuration';
+
+        // Update form fields
+        const brandNameInput = document.getElementById('brandName');
+        const websiteTypeInput = document.getElementById('websiteType');
+        const primaryColorInput = document.getElementById('primaryColor');
+        const secondaryColorInput = document.getElementById('secondaryColor');
+        const tertiaryColorInput = document.getElementById('tertiaryColor');
+        const referenceWebsiteInput = document.getElementById('referenceWebsite');
+        const websiteUrlInput = document.getElementById('websiteUrl');
+        const websitePreviewUrlInput = document.getElementById('websitePreviewUrl');
+
+        if (brandNameInput) brandNameInput.value = config.brandName || '';
+        if (websiteTypeInput) websiteTypeInput.value = config.websiteType || '';
+        if (primaryColorInput && config.colorScheme) primaryColorInput.value = config.colorScheme.primary || '#000000';
+        if (secondaryColorInput && config.colorScheme) secondaryColorInput.value = config.colorScheme.secondary || '#ffffff';
+        if (tertiaryColorInput && config.colorScheme) tertiaryColorInput.value = config.colorScheme.tertiary || '#cccccc';
+        if (referenceWebsiteInput) referenceWebsiteInput.value = config.referenceWebsite || '';
+        if (websiteUrlInput) websiteUrlInput.value = config.websiteUrl || '';
+        if (websitePreviewUrlInput) websitePreviewUrlInput.value = config.previewImageUrl || '';
+
+        // Update preview image with the URL
+        const previewImg = document.getElementById('previewImage');
+        if (previewImg) {
+            if (config.previewImageUrl && config.previewImageUrl.trim() !== '') {
+                previewImg.src = config.previewImageUrl;
+                previewImg.style.display = 'block';
+            } else {
+                // Use default website image if no URL is provided
+                previewImg.src = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0MDAiIGhlaWdodD0iMzAwIiB2aWV3Qm94PSIwIDAgNDAwIDMwMCIgZmlsbD0ibm9uZSI+PHJlY3Qgd2lkdGg9IjQwMCIgaGVpZ2h0PSIzMDAiIGZpbGw9IiNlOWVjZWYiLz48cGF0aCBkPSJNMTczLjMzMyAxMTYuNjY3SDIyNi42NjdWMTQwSDI1MFYxMTYuNjY3QzI1MCAxMDguMDMzIDI0My4wOTggMTAwIDIzMy4zMzMgMTAwSDE2Ni42NjdDMTU2LjkwMiAxMDAgMTUwIDEwOC4wMzMgMTUwIDExNi42NjdWMTgzLjMzM0MxNTAgMTkxLjk2NyAxNTYuOTAyIDIwMCAxNjYuNjY3IDIwMEgyMzMuMzMzQzI0My4wOTggMjAwIDI1MCAxOTEuOTY3IDI1MCAxODMuMzMzVjE2MEgyMjYuNjY3VjE4My4zMzNIMTczLjMzM1YxMTYuNjY3WiIgZmlsbD0iIzZjNzU3ZCIvPjwvc3ZnPg==';
+                previewImg.style.display = 'block';
             }
         }
+
+        // Also load website queries to update the table
+        loadWebsiteQueries(userId);
     } catch (error) {
-        console.error('Error handling website config update:', error);
-    }
-});
-
-// Function to add entry to color history
-function addToColorHistory(primary, secondary, tertiary) {
-    // Add to history with current timestamp
-    const timestamp = new Date().toLocaleString();
-    colorChangeHistory.push({
-        timestamp,
-        primary,
-        secondary,
-        tertiary
-    });
-    
-    // Update history table
-    updateColorHistoryTable();
-    
-    // Limit history to last 10 entries
-    if (colorChangeHistory.length > 10) {
-        colorChangeHistory.shift();
-    }
-}
-
-// Function to update color history table
-function updateColorHistoryTable() {
-    console.log('Updating color history table', colorChangeHistory);
-    
-    // Find or create color history section
-    let colorHistorySection = document.getElementById('colorHistorySection');
-    
-    if (!colorHistorySection) {
-        // Create section if it doesn't exist
-        console.log('Creating color history section');
-        
-        // Look for the website config form
-        const websiteConfigForm = document.getElementById('websiteConfigForm');
-        if (websiteConfigForm) {
-            colorHistorySection = document.createElement('div');
-            colorHistorySection.id = 'colorHistorySection';
-            colorHistorySection.className = 'mt-4 section';
-            colorHistorySection.innerHTML = `
-                <h4>Color Scheme History</h4>
-                <div class="table-responsive">
-                    <table class="table table-bordered table-striped">
-                        <thead>
-                            <tr>
-                                <th>Timestamp</th>
-                                <th>Primary Color</th>
-                                <th>Secondary Color</th>
-                                <th>Tertiary Color</th>
-                            </tr>
-                        </thead>
-                        <tbody id="colorHistoryTableBody">
-                        </tbody>
-                    </table>
-                </div>
-            `;
-            
-            // Insert after the form
-            websiteConfigForm.parentNode.insertBefore(colorHistorySection, websiteConfigForm.nextSibling);
-            } else {
-            console.error('Website config form not found, cannot add color history table');
-            return;
-        }
-    }
-    
-    // Update table with history entries
-    const tableBody = document.getElementById('colorHistoryTableBody');
-    if (tableBody) {
-        tableBody.innerHTML = '';
-        
-        // Add entries in reverse order (newest first)
-        colorChangeHistory.slice().reverse().forEach(entry => {
-            const row = document.createElement('tr');
-            
-            // Create color sample cells
-            row.innerHTML = `
-                <td>${entry.timestamp}</td>
-                <td><span style="display:inline-block; width:20px; height:20px; background-color:${entry.primary}; border:1px solid #ccc; border-radius:3px; margin-right:10px;"></span> ${entry.primary}</td>
-                <td><span style="display:inline-block; width:20px; height:20px; background-color:${entry.secondary}; border:1px solid #ccc; border-radius:3px; margin-right:10px;"></span> ${entry.secondary}</td>
-                <td><span style="display:inline-block; width:20px; height:20px; background-color:${entry.tertiary}; border:1px solid #ccc; border-radius:3px; margin-right:10px;"></span> ${entry.tertiary}</td>
-            `;
-            
-            tableBody.appendChild(row);
-        });
+        console.error('Error loading website configuration:', error);
+        showError('Failed to load website configuration: ' + error.message);
     }
 }
 
@@ -755,76 +699,11 @@ function initUserContentPage() {
     styleEl.textContent = generalCSS;
     document.head.appendChild(styleEl);
     
-    // Make color inputs readonly
-    const primaryColorInput = document.getElementById('primaryColor');
-    const secondaryColorInput = document.getElementById('secondaryColor');
-    const tertiaryColorInput = document.getElementById('tertiaryColor');
-    
-    if (primaryColorInput) primaryColorInput.readOnly = true;
-    if (secondaryColorInput) secondaryColorInput.readOnly = true;
-    if (tertiaryColorInput) tertiaryColorInput.readOnly = true;
-}
-
-// Load website configuration
-async function loadWebsiteConfig(userId) {
-    try {
-        const response = await fetch(`/api/website-config/${userId}`);
-        if (!response.ok) {
-            throw new Error('Failed to load website configuration');
-        }
-        
-        const config = await response.json();
-        console.log('Loaded website config:', config);
-        
-        // Update form fields with current values
-        document.getElementById('brandName').value = config.brandName || '';
-        document.getElementById('websiteType').value = config.websiteType || 'business';
-        document.getElementById('referenceWebsite').value = config.referenceWebsite || '';
-        
-        // Update color inputs and make them read-only
-        if (config.colorScheme) {
-            const primaryColorInput = document.getElementById('primaryColor');
-            const secondaryColorInput = document.getElementById('secondaryColor');
-            const tertiaryColorInput = document.getElementById('tertiaryColor');
-            
-            if (primaryColorInput) {
-                primaryColorInput.value = config.colorScheme.primary || '#000000';
-                primaryColorInput.readOnly = true;
-            }
-            if (secondaryColorInput) {
-                secondaryColorInput.value = config.colorScheme.secondary || '#ffffff';
-                secondaryColorInput.readOnly = true;
-            }
-            if (tertiaryColorInput) {
-                tertiaryColorInput.value = config.colorScheme.tertiary || '#cccccc';
-                tertiaryColorInput.readOnly = true;
-            }
-            
-            // Apply the color scheme to the page
-            applyColorScheme(
-                config.colorScheme.primary,
-                config.colorScheme.secondary,
-                config.colorScheme.tertiary
-            );
-            
-            // Initialize color history with current values
-            if (colorChangeHistory.length === 0) {
-                addToColorHistory(
-                    config.colorScheme.primary,
-                    config.colorScheme.secondary,
-                    config.colorScheme.tertiary
-                );
-            }
-        }
-        
-        // Store the current config
-        currentConfig = config;
-        
-        return config;
-    } catch (error) {
-        console.error('Error loading website configuration:', error);
-        showError('Failed to load website configuration');
-        return null;
+    // Only add Instagram marketing styles if the function exists
+    if (typeof addInstagramMarketingStyles === 'function') {
+        addInstagramMarketingStyles();
+    } else {
+        console.log('Instagram marketing styles function not loaded yet');
     }
 }
 

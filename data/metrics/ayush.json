@@ -1,23 +1,23 @@
 {
   "sessions": {
-    "value": 440,
-    "change": 0,
-    "lastUpdated": "2025-04-05T06:46:17.138Z"
+    "value": 20000,
+    "change": 4445.454545454545,
+    "lastUpdated": "2025-04-08T08:34:18.505Z"
   },
   "total_sales": {
-    "value": 6500,
-    "change": 0,
-    "lastUpdated": "2025-04-05T06:46:17.141Z"
+    "value": 285382,
+    "change": 4290.492307692308,
+    "lastUpdated": "2025-04-08T08:34:18.520Z"
   },
   "orders": {
-    "value": 50,
-    "change": 0,
-    "lastUpdated": "2025-04-05T06:46:17.145Z"
+    "value": 8,
+    "change": -84,
+    "lastUpdated": "2025-04-08T08:34:18.533Z"
   },
   "conversion_rate": {
-    "value": 21.45,
-    "change": 21.45,
-    "lastUpdated": "2025-04-05T06:46:17.148Z"
+    "value": 0.89,
+    "change": -20.56,
+    "lastUpdated": "2025-04-08T08:34:18.544Z"
   },
   "email_stats": {
     "sent": 3000,
