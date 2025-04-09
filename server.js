@@ -368,40 +368,80 @@ app.post('/api/users/bulk-import', upload.single('csv'), (req, res) => {
 // Login endpoint
 app.post('/api/login', (req, res) => {
     try {
+        console.log('Login attempt with data:', req.body);
         const { username, userId, passkey, password } = req.body;
         const users = readUsers();
         
-        // First try to find user by userId and passkey
-        let user = users.find(u => 
-            u.username === username && 
-            u.userId === userId && 
-            u.passkey === passkey
-        );
-
-        // If not found, try to find by username and password
-        if (!user) {
+        console.log('Current users in system:', users);
+        
+        // Try all possible authentication methods
+        let user = null;
+        
+        // Method 1: Check by username and userId and passkey
+        if (username && userId && passkey) {
+            user = users.find(u => 
+                u.username === username && 
+                u.userId === userId && 
+                u.passkey === passkey
+            );
+            console.log('Method 1 result:', user ? 'User found' : 'User not found');
+        }
+        
+        // Method 2: Check by username and password
+        if (!user && username && password) {
             user = users.find(u => 
                 u.username === username && 
                 (u.password === password || u.passkey === password)
             );
+            console.log('Method 2 result:', user ? 'User found' : 'User not found');
+        }
+        
+        // Method 3: Check by username and passkey
+        if (!user && username && passkey) {
+            user = users.find(u => 
+                u.username === username && 
+                u.passkey === passkey
+            );
+            console.log('Method 3 result:', user ? 'User found' : 'User not found');
+        }
+        
+        // Method 4: Check by userId and passkey
+        if (!user && userId && passkey) {
+            user = users.find(u => 
+                u.userId === userId && 
+                u.passkey === passkey
+            );
+            console.log('Method 4 result:', user ? 'User found' : 'User not found');
         }
         
         if (!user) {
-            console.log('Login failed for:', { username, userId });
-            return res.status(401).json({ message: 'Invalid credentials' });
+            console.log('Login failed. No matching user found for:', { username, userId });
+            return res.status(401).json({ 
+                message: 'Invalid credentials',
+                error: 'No matching user found with provided credentials'
+            });
         }
         
         // Update last login
         user.lastLogin = new Date().toISOString();
         writeUsers(users);
         
-        // Add debug logging
         console.log('Login successful for user:', username);
         
-        res.json({ message: 'Login successful', user });
+        res.json({ 
+            message: 'Login successful', 
+            user: {
+                username: user.username,
+                userId: user.userId || user.username,
+                lastLogin: user.lastLogin
+            }
+        });
     } catch (error) {
         console.error('Login error:', error);
-        res.status(500).json({ message: 'Error during login', error: error.message });
+        res.status(500).json({ 
+            message: 'Error during login', 
+            error: error.message 
+        });
     }
 });
 

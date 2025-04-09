@@ -1,0 +1,22 @@
+{
+  "sessions": {
+    "value": 0,
+    "change": 0,
+    "lastUpdated": "2025-04-09T05:25:58.818Z"
+  },
+  "total_sales": {
+    "value": 0,
+    "change": 0,
+    "lastUpdated": "2025-04-09T05:25:58.818Z"
+  },
+  "orders": {
+    "value": 0,
+    "change": 0,
+    "lastUpdated": "2025-04-09T05:25:58.819Z"
+  },
+  "conversion_rate": {
+    "value": 0,
+    "change": 0,
+    "lastUpdated": "2025-04-09T05:25:58.819Z"
+  }
+}
