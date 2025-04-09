@@ -1,7 +1,5 @@
 // API URL configuration
-const API_URL = window.location.hostname === 'localhost' 
-    ? 'http://localhost:5000' 
-    : 'https://theeace-login-portal.onrender.com';
+const API_URL = ''; // Use relative URLs to current domain
 
 // Check if user is already logged in
 window.onload = function() {
@@ -98,17 +96,21 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // Function to show message
 function showMessage(message, type = 'info') {
-    const messageContainer = document.getElementById('message');
+    const messageContainer = document.getElementById('error-message');
     if (!messageContainer) return;
     
     messageContainer.textContent = message;
-    messageContainer.className = `message ${type}`;
+    messageContainer.className = `error-message ${type}`;
     messageContainer.style.display = 'block';
     
-    // Hide message after 3 seconds
+    // Hide message after 5 seconds
     setTimeout(() => {
-        messageContainer.style.display = 'none';
-    }, 3000);
+        messageContainer.style.opacity = '0';
+        setTimeout(() => {
+            messageContainer.style.display = 'none';
+            messageContainer.style.opacity = '1';
+        }, 300);
+    }, 5000);
 }
 
 // Function to logout

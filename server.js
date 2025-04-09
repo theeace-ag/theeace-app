@@ -72,6 +72,21 @@ Object.entries(dataFiles).forEach(([file, defaultContent]) => {
     }
 });
 
+// Initialize default admin user if no users exist
+const usersData = fs.existsSync(usersFilePath) ? JSON.parse(fs.readFileSync(usersFilePath)) : [];
+if (usersData.length === 0) {
+    console.log('Creating default admin user');
+    const defaultAdmin = {
+        username: 'admin',
+        userId: 'admin',
+        passkey: 'admin123',
+        createdAt: new Date().toISOString(),
+        lastLogin: null
+    };
+    fs.writeFileSync(usersFilePath, JSON.stringify([defaultAdmin], null, 2));
+    console.log('Default admin user created');
+}
+
 // Add error logging middleware
 app.use((err, req, res, next) => {
     console.error('Error:', err);
@@ -370,9 +385,41 @@ app.post('/api/login', (req, res) => {
     try {
         console.log('Login attempt with data:', req.body);
         const { username, userId, passkey, password } = req.body;
-        const users = readUsers();
         
-        console.log('Current users in system:', users);
+        // Read fresh users data directly from file
+        let users = [];
+        try {
+            if (fs.existsSync(usersFilePath)) {
+                const usersData = fs.readFileSync(usersFilePath);
+                users = JSON.parse(usersData);
+                console.log('Users data loaded:', users.length, 'users found');
+            } else {
+                console.log('Users file does not exist');
+            }
+        } catch (fileError) {
+            console.error('Error loading users file:', fileError);
+        }
+        
+        // Initialize default admin user if no users exist
+        if (users.length === 0) {
+            console.log('No users found, creating default admin user');
+            const defaultAdmin = {
+                username: 'admin',
+                userId: 'admin',
+                passkey: 'admin123',
+                createdAt: new Date().toISOString(),
+                lastLogin: null
+            };
+            users = [defaultAdmin];
+            try {
+                fs.writeFileSync(usersFilePath, JSON.stringify(users, null, 2));
+                console.log('Default admin user created');
+            } catch (writeError) {
+                console.error('Error creating default admin:', writeError);
+            }
+        }
+        
+        console.log('Looking for user match with:', { username, userId });
         
         // Try all possible authentication methods
         let user = null;
@@ -387,35 +434,28 @@ app.post('/api/login', (req, res) => {
             console.log('Method 1 result:', user ? 'User found' : 'User not found');
         }
         
-        // Method 2: Check by username and password
-        if (!user && username && password) {
+        // Method 2: Check by username and password/passkey
+        if (!user && username && (password || passkey)) {
+            const pass = password || passkey;
             user = users.find(u => 
                 u.username === username && 
-                (u.password === password || u.passkey === password)
+                (u.password === pass || u.passkey === pass)
             );
             console.log('Method 2 result:', user ? 'User found' : 'User not found');
         }
         
-        // Method 3: Check by username and passkey
-        if (!user && username && passkey) {
+        // Method 3: Check by userId and passkey
+        if (!user && userId && (password || passkey)) {
+            const pass = password || passkey;
             user = users.find(u => 
-                u.username === username && 
-                u.passkey === passkey
+                u.userId === userId && 
+                (u.password === pass || u.passkey === pass)
             );
             console.log('Method 3 result:', user ? 'User found' : 'User not found');
         }
         
-        // Method 4: Check by userId and passkey
-        if (!user && userId && passkey) {
-            user = users.find(u => 
-                u.userId === userId && 
-                u.passkey === passkey
-            );
-            console.log('Method 4 result:', user ? 'User found' : 'User not found');
-        }
-        
         if (!user) {
-            console.log('Login failed. No matching user found for:', { username, userId });
+            console.log('Login failed. No matching user found');
             return res.status(401).json({ 
                 message: 'Invalid credentials',
                 error: 'No matching user found with provided credentials'
@@ -424,9 +464,14 @@ app.post('/api/login', (req, res) => {
         
         // Update last login
         user.lastLogin = new Date().toISOString();
-        writeUsers(users);
+        try {
+            fs.writeFileSync(usersFilePath, JSON.stringify(users, null, 2));
+            console.log('Updated last login for user:', user.username);
+        } catch (updateError) {
+            console.error('Error updating last login:', updateError);
+        }
         
-        console.log('Login successful for user:', username);
+        console.log('Login successful for user:', user.username);
         
         res.json({ 
             message: 'Login successful', 
