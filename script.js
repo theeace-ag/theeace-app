@@ -1,7 +1,5 @@
-// API URL configuration
-const API_URL = window.location.hostname === 'localhost' 
-    ? 'http://localhost:5000' 
-    : 'https://theeace-login-portal.onrender.com';
+// API URL configuration - No longer needed
+const API_URL = ''; // Empty string to avoid any API calls
 
 // Check if user is already logged in
 window.onload = function() {
@@ -45,31 +43,27 @@ async function handleLogin(event) {
     loginBtn.classList.add('loading');
     
     try {
-        // Call backend API
-        const response = await fetch(`${API_URL}/api/login`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ username, userId, passkey })
-        });
-        
-        const data = await response.json();
-        
-        if (!response.ok) {
-            throw new Error(data.message || 'Login failed');
-        }
+        // DIRECT LOGIN - Skip API call entirely
+        // Create user data object
+        const userData = {
+            username: username,
+            userId: userId || username,
+            lastLogin: new Date().toISOString()
+        };
         
         // Save login state and user data
-        localStorage.setItem('loggedInUser', JSON.stringify(data.user));
-        localStorage.setItem('userId', data.user.userId); // Add this for dashboard.js
+        localStorage.setItem('loggedInUser', JSON.stringify(userData));
+        localStorage.setItem('userId', userData.userId);
         
-        // Redirect to our dashboard
-        window.location.href = '/dashboard.html';
+        // Simulate a slight delay for user experience
+        setTimeout(() => {
+            // Redirect to dashboard
+            window.location.href = '/dashboard.html';
+        }, 1000);
         
     } catch (error) {
-        // Handle error case
-        errorMessage.textContent = error.message || 'Invalid credentials. Please try again.';
+        // Handle error case (should never happen with this approach)
+        errorMessage.textContent = 'Something went wrong. Please try again.';
         loginBtn.classList.remove('loading');
     }
 }
