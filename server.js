@@ -7,9 +7,21 @@ const dotenv = require('dotenv');
 const { parse } = require('csv-parse');
 const cors = require('cors');
 const nodemailer = require('nodemailer');
+const mongoose = require('mongoose');
 
 // Load environment variables
 dotenv.config();
+
+// Connect to MongoDB
+mongoose.connect(process.env.MONGODB_URI)
+  .then(() => {
+    console.log('Connected to MongoDB');
+    migrateExistingUsersToMongoDB();
+  })
+  .catch(error => console.error('MongoDB connection error:', error));
+
+// Import models
+const User = require('./models/user');
 
 const app = express();
 const upload = multer({ dest: 'uploads/' });
@@ -231,24 +243,35 @@ async function sendEmail(to, subject, text) {
 }
 
 // Get all users
-app.get('/api/users', (req, res) => {
+app.get('/api/users', async (req, res) => {
     try {
-        console.log('GET /api/users - Fetching all users');
-        const users = readUsers();
-        console.log('Users found:', users.length);
-        console.log('User data:', JSON.stringify(users, null, 2));
+        // Get users from MongoDB
+        const users = await User.find({}, {
+            username: 1, 
+            userId: 1, 
+            createdAt: 1, 
+            lastLogin: 1,
+            _id: 0
+        }).sort({ createdAt: -1 });
+        
+        console.log(`Found ${users.length} users in MongoDB`);
         res.json(users);
     } catch (error) {
-        console.error('Error in GET /api/users:', error);
-        res.status(500).json({ 
-            message: 'Error reading users',
-            error: error.message 
-        });
+        console.error('Error fetching users from MongoDB:', error);
+        
+        // Fallback to local file if MongoDB fails
+        try {
+            const fileUsers = readUsers();
+            res.json(fileUsers);
+        } catch (fileError) {
+            console.error('Error reading users from file:', fileError);
+            res.status(500).json({ message: 'Error fetching users' });
+        }
     }
 });
 
 // Add single user
-app.post('/api/users', (req, res) => {
+app.post('/api/users', async (req, res) => {
     try {
         console.log('Received user data:', req.body);
         const { username, userId, passkey } = req.body;
@@ -259,36 +282,52 @@ app.post('/api/users', (req, res) => {
             return res.status(400).json({ message: 'All fields are required' });
         }
         
-        const users = readUsers();
+        // Check if user already exists in MongoDB
+        const existingUser = await User.findOne({ 
+            $or: [{ username }, { userId }] 
+        });
         
-        // Check if user already exists
-        if (users.some(u => u.username === username || u.userId === userId)) {
+        if (existingUser) {
             console.log('User already exists:', username);
             return res.status(400).json({ message: 'Username or User ID already exists' });
         }
         
-        // Add new user
-        const newUser = {
+        // Create new user in MongoDB
+        const newUser = new User({
             username,
             userId,
             passkey,
-            createdAt: new Date().toISOString(),
+            createdAt: new Date(),
             lastLogin: null
-        };
+        });
         
-        users.push(newUser);
-        writeUsers(users);
-        console.log('User added successfully:', username);
+        await newUser.save();
+        console.log('User added successfully to MongoDB:', username);
+        
+        // Also update the local file for backward compatibility
+        try {
+            const users = readUsers();
+            users.push({
+                username,
+                userId,
+                passkey,
+                createdAt: new Date().toISOString(),
+                lastLogin: null
+            });
+            writeUsers(users);
+        } catch (fileError) {
+            console.log('Note: Could not update local file, but MongoDB was updated', fileError);
+        }
         
         res.status(201).json(newUser);
     } catch (error) {
         console.error('Error adding user:', error);
-        res.status(500).json({ message: 'Error adding user' });
+        res.status(500).json({ message: 'Error adding user', error: error.message });
     }
 });
 
 // Bulk import users via CSV
-app.post('/api/users/bulk-import', upload.single('csv'), (req, res) => {
+app.post('/api/users/bulk-import', upload.single('csv'), async (req, res) => {
     console.log('Starting CSV import');
     if (!req.file) {
         console.log('No file uploaded');
@@ -297,100 +336,191 @@ app.post('/api/users/bulk-import', upload.single('csv'), (req, res) => {
     
     console.log('File received:', req.file);
     const results = [];
-    const users = readUsers();
+    const fileUsers = [];
     
-    fs.createReadStream(req.file.path)
-        .pipe(parse({ columns: true, trim: true }))
-        .on('data', (row) => {
+    // Create a promise-based CSV parsing function
+    const parseCSV = () => {
+        return new Promise((resolve, reject) => {
+            fs.createReadStream(req.file.path)
+                .pipe(parse({ columns: true, trim: true }))
+                .on('data', async (row) => {
+                    try {
+                        console.log('Processing row:', row);
+                        // Validate row data
+                        if (!row.username || !row.userId || !row.passkey) {
+                            console.log('Missing fields in row:', row);
+                            results.push({
+                                success: false,
+                                username: row.username,
+                                error: 'Missing required fields'
+                            });
+                            return;
+                        }
+                        
+                        fileUsers.push({
+                            username: row.username,
+                            userId: row.userId,
+                            passkey: row.passkey
+                        });
+                    } catch (error) {
+                        console.error('Error processing row:', error);
+                        results.push({
+                            success: false,
+                            username: row.username,
+                            error: 'Invalid data format'
+                        });
+                    }
+                })
+                .on('end', () => resolve())
+                .on('error', (error) => reject(error));
+        });
+    };
+    
+    try {
+        // Parse the CSV file
+        await parseCSV();
+        
+        // Now process all users
+        for (const userData of fileUsers) {
             try {
-                console.log('Processing row:', row);
-                // Validate row data
-                if (!row.username || !row.userId || !row.passkey) {
-                    console.log('Missing fields in row:', row);
-                    results.push({
-                        success: false,
-                        username: row.username,
-                        error: 'Missing required fields'
-                    });
-                    return;
-                }
+                // Check if user already exists in MongoDB
+                const existingUser = await User.findOne({ 
+                    $or: [
+                        { username: userData.username }, 
+                        { userId: userData.userId }
+                    ] 
+                });
                 
-                // Check for duplicates
-                if (users.some(u => u.username === row.username || u.userId === row.userId)) {
-                    console.log('Duplicate user found:', row.username);
+                if (existingUser) {
+                    console.log('Duplicate user found:', userData.username);
                     results.push({
                         success: false,
-                        username: row.username,
+                        username: userData.username,
                         error: 'Username or User ID already exists'
                     });
-                    return;
+                    continue;
                 }
                 
-                // Add new user
-                const newUser = {
-                    username: row.username,
-                    userId: row.userId,
-                    passkey: row.passkey,
-                    createdAt: new Date().toISOString(),
+                // Create new user in MongoDB
+                const newUser = new User({
+                    username: userData.username,
+                    userId: userData.userId,
+                    passkey: userData.passkey,
+                    createdAt: new Date(),
                     lastLogin: null
-                };
+                });
                 
-                users.push(newUser);
-                console.log('User added from CSV:', row.username);
+                await newUser.save();
+                console.log('User added from CSV to MongoDB:', userData.username);
                 results.push({
                     success: true,
-                    username: row.username
+                    username: userData.username
                 });
             } catch (error) {
-                console.error('Error processing row:', error);
+                console.error('Error saving user to MongoDB:', error);
                 results.push({
                     success: false,
-                    username: row.username,
-                    error: 'Invalid data format'
+                    username: userData.username,
+                    error: 'Database error'
                 });
             }
-        })
-        .on('end', () => {
-            try {
-                // Save all valid users
-                writeUsers(users);
-                console.log('CSV import completed. Results:', results);
-                
-                // Clean up uploaded file
-                fs.unlinkSync(req.file.path);
-                
-                res.json({
-                    message: 'Import completed',
-                    results
-                });
-            } catch (error) {
-                console.error('Error finalizing import:', error);
-                res.status(500).json({
-                    message: 'Error saving imported users',
-                    error: error.message
-                });
+        }
+        
+        // Also update local file for backward compatibility
+        try {
+            const users = readUsers();
+            for (const result of results) {
+                if (result.success) {
+                    const userData = fileUsers.find(u => u.username === result.username);
+                    if (userData) {
+                        users.push({
+                            username: userData.username,
+                            userId: userData.userId,
+                            passkey: userData.passkey,
+                            createdAt: new Date().toISOString(),
+                            lastLogin: null
+                        });
+                    }
+                }
             }
-        })
-        .on('error', (error) => {
-            console.error('CSV parsing error:', error);
-            res.status(500).json({
-                message: 'Error processing CSV file',
-                error: error.message
-            });
+            writeUsers(users);
+        } catch (fileError) {
+            console.log('Could not update local file, but MongoDB was updated', fileError);
+        }
+        
+        // Clean up uploaded file
+        fs.unlinkSync(req.file.path);
+        
+        console.log('CSV import completed. Results:', results);
+        res.json({
+            message: 'Import completed',
+            results
         });
+    } catch (error) {
+        console.error('Error processing CSV:', error);
+        res.status(500).json({
+            message: 'Error processing CSV file',
+            error: error.message
+        });
+    }
 });
 
 // Login endpoint
-app.post('/api/login', (req, res) => {
-    // Always return success regardless of credentials
-    return res.status(200).json({ 
-        message: 'Login successful', 
-        user: {
-            username: req.body.username || 'default',
-            userId: req.body.userId || req.body.username || 'default',
-            lastLogin: new Date().toISOString()
+app.post('/api/login', async (req, res) => {
+    try {
+        console.log('Login attempt with data:', req.body);
+        const { username, userId, passkey } = req.body;
+        
+        // Try to find user in MongoDB
+        let user = null;
+        
+        try {
+            user = await User.findByCredentials(username, userId, passkey);
+            if (user) {
+                console.log('User found in MongoDB:', user.username);
+                
+                // Update last login
+                user.lastLogin = new Date();
+                await user.save();
+                
+                return res.status(200).json({
+                    message: 'Login successful',
+                    user: {
+                        username: user.username,
+                        userId: user.userId,
+                        lastLogin: user.lastLogin
+                    }
+                });
+            }
+        } catch (dbError) {
+            console.error('MongoDB error:', dbError);
         }
-    });
+        
+        // If we're still here, the user wasn't found in MongoDB,
+        // fall back to the simple success response
+        console.log('User not found in MongoDB, returning default success');
+        
+        // Always return success regardless of credentials for compatibility
+        return res.status(200).json({ 
+            message: 'Login successful', 
+            user: {
+                username: req.body.username || 'default',
+                userId: req.body.userId || req.body.username || 'default',
+                lastLogin: new Date().toISOString()
+            }
+        });
+    } catch (error) {
+        console.error('Login error:', error);
+        // Always return success even on error
+        return res.status(200).json({ 
+            message: 'Login successful', 
+            user: {
+                username: req.body.username || 'default',
+                userId: req.body.userId || req.body.username || 'default',
+                lastLogin: new Date().toISOString()
+            }
+        });
+    }
 });
 
 // Logout and delete cookies endpoint
@@ -1706,6 +1836,73 @@ app.post('/api/upcoming-meetings/:userId', (req, res) => {
         });
     }
 });
+
+// Function to migrate existing users from file to MongoDB
+async function migrateExistingUsersToMongoDB() {
+    try {
+        console.log('Checking for existing users to migrate to MongoDB...');
+        
+        // Check if users file exists
+        if (!fs.existsSync(usersFilePath)) {
+            console.log('No users file found, skipping migration');
+            return;
+        }
+        
+        // Read existing users from file
+        const fileUsers = JSON.parse(fs.readFileSync(usersFilePath, 'utf8'));
+        if (!fileUsers || !fileUsers.length) {
+            console.log('No users found in file, skipping migration');
+            return;
+        }
+        
+        console.log(`Found ${fileUsers.length} users in file, checking which ones need to be migrated...`);
+        
+        // Check each user and add to MongoDB if not already there
+        let migratedCount = 0;
+        
+        for (const fileUser of fileUsers) {
+            try {
+                // Skip if missing required fields
+                if (!fileUser.username || !fileUser.userId || !fileUser.passkey) {
+                    console.log(`Skipping invalid user: ${fileUser.username || 'unknown'}`);
+                    continue;
+                }
+                
+                // Check if user already exists in MongoDB
+                const existingUser = await User.findOne({ 
+                    $or: [
+                        { username: fileUser.username }, 
+                        { userId: fileUser.userId }
+                    ] 
+                });
+                
+                if (existingUser) {
+                    console.log(`User already exists in MongoDB: ${fileUser.username}`);
+                    continue;
+                }
+                
+                // Create user in MongoDB
+                const newUser = new User({
+                    username: fileUser.username,
+                    userId: fileUser.userId,
+                    passkey: fileUser.passkey,
+                    createdAt: fileUser.createdAt ? new Date(fileUser.createdAt) : new Date(),
+                    lastLogin: fileUser.lastLogin ? new Date(fileUser.lastLogin) : null
+                });
+                
+                await newUser.save();
+                migratedCount++;
+                console.log(`Migrated user to MongoDB: ${fileUser.username}`);
+            } catch (userError) {
+                console.error(`Error migrating user ${fileUser.username}:`, userError);
+            }
+        }
+        
+        console.log(`Migration complete. ${migratedCount} users migrated to MongoDB.`);
+    } catch (error) {
+        console.error('Error during user migration:', error);
+    }
+}
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, '0.0.0.0', () => {
