@@ -55,7 +55,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 },
                 body: JSON.stringify({ username, userId, passkey })
             })
-            .then(response => response.json())
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`Login failed with status ${response.status}`);
+                }
+                return response.json();
+            })
             .then(data => {
                 loginButton.disabled = false;
                 loginButton.textContent = originalText;
@@ -80,7 +85,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 console.error('Error during login:', error);
                 loginButton.disabled = false;
                 loginButton.textContent = originalText;
-                showMessage('An error occurred. Please try again.', 'error');
+                showMessage('Login failed. Please check your credentials.', 'error');
             });
         });
     }
