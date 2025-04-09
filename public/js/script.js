@@ -47,7 +47,7 @@ document.addEventListener('DOMContentLoaded', function() {
             loginButton.disabled = true;
             loginButton.textContent = 'Logging in...';
             
-            // SIMPLIFIED LOGIN - Store data directly without API call
+            // Create user data directly
             const userData = {
                 username: username,
                 userId: userId,
