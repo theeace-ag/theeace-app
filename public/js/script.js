@@ -48,7 +48,7 @@ document.addEventListener('DOMContentLoaded', function() {
             loginButton.disabled = true;
             loginButton.textContent = 'Logging in...';
             
-            fetch('/api/login', {
+            fetch(`${window.location.origin}/api/login`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
