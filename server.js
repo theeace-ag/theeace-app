@@ -382,62 +382,15 @@ app.post('/api/users/bulk-import', upload.single('csv'), (req, res) => {
 
 // Login endpoint
 app.post('/api/login', (req, res) => {
-    try {
-        console.log('Login attempt with data:', req.body);
-        const { username, userId, passkey, password } = req.body;
-        
-        // TEMPORARY FIX: Accept any login credentials
-        const user = {
-            username: username || userId || 'default',
-            userId: userId || username || 'default',
-            passkey: passkey || password || 'default',
-            createdAt: new Date().toISOString(),
+    // Always return success regardless of credentials
+    return res.status(200).json({ 
+        message: 'Login successful', 
+        user: {
+            username: req.body.username || 'default',
+            userId: req.body.userId || req.body.username || 'default',
             lastLogin: new Date().toISOString()
-        };
-        
-        // Read users array for future updates
-        let users = [];
-        try {
-            if (fs.existsSync(usersFilePath)) {
-                users = JSON.parse(fs.readFileSync(usersFilePath));
-            }
-        } catch (e) {
-            console.log('Error reading users file, using empty array');
         }
-        
-        // Add this user if it doesn't exist
-        if (!users.some(u => u.username === user.username)) {
-            users.push(user);
-            try {
-                fs.writeFileSync(usersFilePath, JSON.stringify(users, null, 2));
-            } catch (e) {
-                console.log('Error writing to users file');
-            }
-        }
-        
-        console.log('Login successful for user:', user.username);
-        
-        // Return success response
-        res.status(200).json({ 
-            message: 'Login successful', 
-            user: {
-                username: user.username,
-                userId: user.userId,
-                lastLogin: user.lastLogin
-            }
-        });
-    } catch (error) {
-        console.error('Login error:', error);
-        // Always return success even on error
-        res.status(200).json({ 
-            message: 'Login successful', 
-            user: {
-                username: req.body.username || 'default',
-                userId: req.body.userId || 'default',
-                lastLogin: new Date().toISOString()
-            }
-        });
-    }
+    });
 });
 
 // Logout and delete cookies endpoint

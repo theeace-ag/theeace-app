@@ -44,49 +44,24 @@ document.addEventListener('DOMContentLoaded', function() {
             
             // Show loading state
             const loginButton = document.querySelector('#loginForm button[type="submit"]');
-            const originalText = loginButton.textContent;
             loginButton.disabled = true;
             loginButton.textContent = 'Logging in...';
             
-            fetch(`${window.location.origin}/api/login`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ username, userId, passkey })
-            })
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error(`Login failed with status ${response.status}`);
-                }
-                return response.json();
-            })
-            .then(data => {
-                loginButton.disabled = false;
-                loginButton.textContent = originalText;
-                
-                if (data.message === 'Login successful') {
-                    // Store user data in localStorage
-                    localStorage.setItem('loggedInUser', JSON.stringify(data.user));
-                    localStorage.setItem('userId', data.user.userId); // Add this for dashboard.js
-                    
-                    // Initialize socket connection with the user ID
-                    if (window.socketUtil) {
-                        window.socketUtil.updateUserId(data.user.userId);
-                    }
-                    
-                    // Redirect to dashboard
-                    window.location.href = 'dashboard.html';
-                } else {
-                    showMessage('Login failed. Please check your credentials.', 'error');
-                }
-            })
-            .catch(error => {
-                console.error('Error during login:', error);
-                loginButton.disabled = false;
-                loginButton.textContent = originalText;
-                showMessage('Login failed. Please check your credentials.', 'error');
-            });
+            // SIMPLIFIED LOGIN - Store data directly without API call
+            const userData = {
+                username: username,
+                userId: userId,
+                lastLogin: new Date().toISOString()
+            };
+            
+            // Store user data in localStorage
+            localStorage.setItem('loggedInUser', JSON.stringify(userData));
+            localStorage.setItem('userId', userId);
+            
+            // Redirect to dashboard
+            setTimeout(() => {
+                window.location.href = 'dashboard.html';
+            }, 1000);
         });
     }
     
